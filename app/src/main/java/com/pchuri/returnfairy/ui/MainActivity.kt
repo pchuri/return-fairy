@@ -35,11 +35,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pchuri.returnfairy.R
 import com.pchuri.returnfairy.data.SettingsStore
+import com.pchuri.returnfairy.data.cleanUpLegacyData
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.pchuri.returnfairy.notify.ensureNotificationChannel
 import com.pchuri.returnfairy.notify.scheduleDailyCheck
 import com.pchuri.returnfairy.update.UpdateChecker
-
-private const val LEGACY_DATABASE = "returnfairy.db"
 
 class MainActivity : ComponentActivity() {
 
@@ -51,9 +53,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         ensureNotificationChannel(this)
-        scheduleDailyCheck(this, SettingsStore(this).reminderHour)
-        // 3.x kept typed-in and scanned books in a Room database; 4.0 shows library data only.
-        deleteDatabase(LEGACY_DATABASE)
+        val settings = SettingsStore(this)
+        scheduleDailyCheck(this, settings)
+        // Deleting the 3.x AI model can take a moment; keep it off the main thread.
+        lifecycleScope.launch(Dispatchers.IO) { cleanUpLegacyData(applicationContext, settings) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {

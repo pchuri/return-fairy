@@ -63,8 +63,11 @@ data class AccountStatus(
     val books: List<LibraryBook>,
     val reservations: List<Reservation>,
     val error: SplibErrorKind? = null,
+    /** Library login ID, kept so a cached result can be matched to its account. Not displayed. */
+    val userId: String = "",
 ) {
     val interlibraryCount: Int get() = books.count { it.isInterlibrary }
+    val isConnectionFailure: Boolean get() = error == SplibErrorKind.NETWORK || error == SplibErrorKind.TIMEOUT
     val pickupBookCount: Int get() = books.count { it.status == BookStatus.READY_FOR_PICKUP }
     val readyReservationCount: Int get() = reservations.count { it.readyForPickup }
 
@@ -76,11 +79,27 @@ data class AccountStatus(
 
 data class Snapshot(val fetchedAt: LocalDateTime, val accounts: List<AccountStatus>) {
     /** Every account failed to reach the site (no network, site down), as opposed to a login problem. */
-    fun isOffline(): Boolean = accounts.isNotEmpty() &&
-        accounts.all { it.error == SplibErrorKind.NETWORK || it.error == SplibErrorKind.TIMEOUT }
+    fun isOffline(): Boolean = accounts.isNotEmpty() && accounts.all { it.isConnectionFailure }
+
+    /**
+     * For an offline result: each account's last good cached entry (under its current label) where
+     * there is one, else this result's error entry. Accounts no longer configured are dropped, so a
+     * removed account's books do not linger. Keeps the cache's time, since that is when the data is from.
+     */
+    fun withOfflineFallback(cached: Snapshot): Snapshot {
+        val cachedById = cached.accounts.filter { it.error == null && it.userId.isNotEmpty() }.associateBy { it.userId }
+        return Snapshot(
+            fetchedAt = cached.fetchedAt,
+            accounts = accounts.map { fresh -> cachedById[fresh.userId]?.copy(label = fresh.label) ?: fresh },
+        )
+    }
 }
 
-enum class SplibErrorKind { LOGIN_FAILED, SESSION_EXPIRED, NETWORK, TIMEOUT }
+enum class SplibErrorKind {
+    LOGIN_FAILED, SESSION_EXPIRED, NETWORK, TIMEOUT,
+    /** The page loaded but could not be read: the site layout probably changed. Not "offline". */
+    SITE_CHANGED,
+}
 
 class AuthException(val kind: SplibErrorKind, message: String) : Exception(message)
 class FetchException(message: String, cause: Throwable? = null) : Exception(message, cause)

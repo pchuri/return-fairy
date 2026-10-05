@@ -42,7 +42,7 @@ class DailyDigestTest {
         assertEquals(listOf("홍길동 · 데미안"), digest.overdue)
         assertEquals(listOf("홍길동 · 모모"), digest.dueToday)
         assertEquals(listOf("홍길동 · 어린 왕자"), digest.dueTomorrow)
-        assertEquals(listOf("홍길동 · 나니아 연대기 (스마트)", "홍길동 · 1984 (잠실)"), digest.pickups)
+        assertEquals(listOf("홍길동 · 나니아 연대기 (스마트)", "홍길동 · 1984 (잠실, ~10.08)"), digest.pickups)
     }
 
     @Test

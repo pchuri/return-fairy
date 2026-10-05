@@ -131,4 +131,34 @@ class SplibParsersTest {
         assertEquals(LocalDate.of(2026, 8, 5), SplibParsers.findDate("반납예정일 : 2026.8.5"))
         assertNull(SplibParsers.findDate("입수"))
     }
+
+    @Test
+    fun statusWordSplitsOnAnyWhitespace() {
+        val (entries, _) = SplibParsers.parseDooraeStatus(
+            dooraeRow("줄바꿈", "송파거마도서관", "송파위례도서관", "<span>발송\n      2026.10.01</span>") +
+                dooraeRow("nbsp", "송파거마도서관", "송파위례도서관", "입수&nbsp;2026.10.05")
+        )
+        assertEquals(listOf("발송", "입수"), entries.map { it.status })
+    }
+
+    @Test
+    fun indexWithoutPlainNameIsNotASignOut() {
+        val html = """
+            <div class="barcodeInfo">
+              <strong>홍길동</strong> 님</div>
+            <a href="${SplibConfig.LOAN_PATH}"><span>1</span></a>
+            <a href="${SplibConfig.INTERLIBRARY_PATH}"><span>0</span></a>"""
+        assertEquals("", SplibParsers.parseIndexContent(html).name)
+    }
+
+    @Test
+    fun hugePageNumberIsCappedNotACrash() {
+        assertEquals(SplibParsers.MAX_PAGES, SplibParsers.parseMaxPage("""<p class="paging"><span>12345678901</span></p>"""))
+    }
+
+    @Test
+    fun reservationTitleJoinsTextLikeBeautifulSoup() {
+        val html = row("어린<br>왕자", """<div class="info"><strong>송파거마도서관</strong></div>""", "")
+        assertEquals("어린왕자", SplibParsers.parseReservationStatus(html).single().title)
+    }
 }

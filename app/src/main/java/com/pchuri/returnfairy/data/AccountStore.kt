@@ -13,7 +13,9 @@ import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /** [label] is the name shown on the dashboard; blank means "use the name the library site shows". */
-data class Account(val userId: String, val password: String, val label: String = "")
+data class Account(val userId: String, val password: String, val label: String = "") {
+    override fun toString(): String = "Account(userId=$userId, label=$label)"
+}
 
 /**
  * Stores library accounts in SharedPreferences with passwords encrypted

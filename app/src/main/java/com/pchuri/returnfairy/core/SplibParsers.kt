@@ -39,6 +39,7 @@ object SplibParsers {
     private val RANK_PATTERN = Regex("""예약순번\s*:\s*(\d+)""")
     private val WAITING_COUNT_PATTERN = Regex("""\((\d+)\s*명\s*예약\)""")
     private val PAGE_NUMBER_PATTERN = Regex("""^\d+$""")
+    private val WHITESPACE = Regex("""[\s\u00A0]+""")
 
     /** Branches whose local name differs from the official one. */
     private val LIBRARY_ALIASES = mapOf(
@@ -79,7 +80,10 @@ object SplibParsers {
         return out
     }
 
-    private fun squash(text: String?): String = (text ?: "").replace(Regex("""\s+"""), " ").trim()
+    private fun squash(text: String?): String = (text ?: "").replace(WHITESPACE, " ").trim()
+
+    /** BeautifulSoup get_text() then squashed: text pieces joined as-is (a <br> adds no space). */
+    private fun Element.squashedText(): String = squash(textNodesDeep().joinToString("") { it.wholeText })
 
     /** First date in [text] as a LocalDate. Accepts 2026.8.29 as well as 2026.08.29. */
     fun findDate(text: String?): LocalDate? {
@@ -121,9 +125,8 @@ object SplibParsers {
         val doc = Jsoup.parse(content)
         val barcodeInfo = doc.selectFirst("div.barcodeInfo")
             ?: throw AuthException(SplibErrorKind.SESSION_EXPIRED, "index page missing user info")
-        val name = (barcodeInfo.childNodes().firstOrNull() as? TextNode)?.wholeText?.trim()
-            ?.takeIf { it.isNotEmpty() }
-            ?: throw AuthException(SplibErrorKind.SESSION_EXPIRED, "index page missing user name")
+        // The name may be missing or wrapped in a tag; that is not a sign-out (the label falls back).
+        val name = (barcodeInfo.childNodes().firstOrNull() as? TextNode)?.wholeText?.trim().orEmpty()
 
         val loanLink = doc.selectFirst("a[href=${SplibConfig.LOAN_PATH}]")
         val interlibraryLink = doc.selectFirst("a[href=${SplibConfig.INTERLIBRARY_PATH}]")
@@ -165,7 +168,8 @@ object SplibParsers {
      * status such as 입수취소 is never mistaken for 입수.
      */
     internal fun dooraeStatus(statusBox: Element?): String {
-        val first = statusBox?.spacedText()?.split(" ")?.firstOrNull().orEmpty()
+        // Any whitespace, nbsp included, like Python str.split().
+        val first = statusBox?.spacedText()?.split(WHITESPACE)?.firstOrNull { it.isNotEmpty() }.orEmpty()
         if (first != CANCEL_BUTTON_TEXT && first.endsWith(CANCEL_BUTTON_TEXT)) {
             return first.removeSuffix(CANCEL_BUTTON_TEXT)
         }
@@ -220,7 +224,7 @@ object SplibParsers {
         val library = infos.firstOrNull()?.selectFirst("strong")?.let { abbreviateLibraryName(squash(it.text())) } ?: ""
         val rankText = labelledSpan(infos, "예약순번")
         Reservation(
-            title = squash(title.text()),
+            title = title.squashedText(),
             library = library,
             rank = RANK_PATTERN.find(rankText)?.groupValues?.get(1)?.toIntOrNull() ?: 0,
             waitingCount = WAITING_COUNT_PATTERN.find(rankText)?.groupValues?.get(1)?.toIntOrNull() ?: 0,
@@ -233,8 +237,8 @@ object SplibParsers {
     fun parseMaxPage(content: String): Int {
         val paging = Jsoup.parse(content).selectFirst(".paging") ?: return 1
         val pages = paging.textNodesDeep().map { it.wholeText.trim() }
-            .filter { PAGE_NUMBER_PATTERN.matches(it) }.map { it.toInt() }
-        return (pages.maxOrNull() ?: 1).coerceAtMost(MAX_PAGES)
+            .filter { PAGE_NUMBER_PATTERN.matches(it) }.map { it.toBigInteger().min(MAX_PAGES.toBigInteger()).toInt() }
+        return pages.maxOrNull() ?: 1
     }
 }
 
@@ -244,6 +248,7 @@ object SplibParsers {
  */
 internal fun assembleAccount(
     label: String,
+    userId: String = "",
     loans: List<LoanRow>,
     doorae: List<DooraeRow>,
     reservations: List<Reservation>,
@@ -271,7 +276,7 @@ internal fun assembleAccount(
         if (entry.title in loanTitles) continue
         books.add(classify(entry.title, entry.status, true, entry.receivingLibrary, entry.providingLibrary))
     }
-    return AccountStatus(label = label, books = books, reservations = reservations)
+    return AccountStatus(label = label, userId = userId, books = books, reservations = reservations)
 }
 
 private fun classify(title: String, raw: String, isInterlibrary: Boolean, library: String, providing: String): LibraryBook {

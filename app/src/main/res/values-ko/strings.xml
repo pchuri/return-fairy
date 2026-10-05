@@ -7,6 +7,7 @@
 
     <string name="dashboard_title">📚 송파도서관 대출 현황</string>
     <string name="dashboard_fetched_at">조회 시각 %1$s</string>
+    <string name="dashboard_offline">연결 안 됨 · %1$s 결과</string>
     <string name="dashboard_refreshing">조회 중…</string>
     <string name="dashboard_summary">%1$d개 계정 · 총 %2$d권 (상호대차 %3$d)</string>
     <string name="dashboard_summary_pickup">" · 🔔 찾아올 책 %1$d"</string>
@@ -25,6 +26,7 @@
     <string name="error_login">아이디 또는 비밀번호가 올바르지 않아요</string>
     <string name="error_session">로그인이 풀렸어요. 다시 시도해 주세요</string>
     <string name="error_network">도서관 사이트에 연결하지 못했어요</string>
+    <string name="error_site_changed">도서관 사이트를 읽지 못했어요 (사이트가 바뀌었을 수 있어요)</string>
     <string name="error_timeout">조회 시간이 초과됐어요</string>
 
     <string name="col_library">도서관</string>
@@ -46,7 +48,7 @@
     <string name="due_unknown">반납일?</string>
     <string name="reservations_title">예약 %1$d건</string>
     <string name="reservation_ready">🔔 %1$s · %2$s 수령대기 (~%3$s)</string>
-    <string name="reservation_waiting">· %1$s · %2$s %3$d순위</string>
+    <string name="reservation_waiting">· %1$s · %2$s %3$s순위</string>
 
     <string name="settings_accounts_section">송파도서관 계정</string>
     <string name="settings_accounts_description">송파구립도서관 홈페이지 아이디와 비밀번호예요. 비밀번호는 Android Keystore로 암호화해서 이 기기에만 저장해요.</string>

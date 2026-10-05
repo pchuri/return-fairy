@@ -22,6 +22,7 @@ import com.pchuri.returnfairy.core.BookStatus
 import com.pchuri.returnfairy.core.Snapshot
 import com.pchuri.returnfairy.core.SplibClient
 import com.pchuri.returnfairy.data.AccountStore
+import com.pchuri.returnfairy.data.SettingsStore
 import com.pchuri.returnfairy.data.SnapshotStore
 import com.pchuri.returnfairy.ui.MainActivity
 import java.time.Duration
@@ -31,6 +32,7 @@ import java.time.LocalTime
 import java.util.concurrent.TimeUnit
 
 const val CHANNEL_DUE_REMINDERS = "due_reminders"
+private val DEADLINE = java.time.format.DateTimeFormatter.ofPattern("MM.dd")
 private const val WORK_NAME = "due_reminder_daily"
 private const val NOTIFICATION_ID = 1001
 
@@ -45,8 +47,21 @@ fun ensureNotificationChannel(context: Context) {
     }
 }
 
-/** (Re)schedule the daily check at the given local hour. */
-fun scheduleDailyCheck(context: Context, hour: Int) {
+/** How the work is scheduled. Bump to replace work enqueued by an older version once. */
+private const val SCHEDULE_VERSION = 2
+
+/**
+ * Makes sure the daily check is scheduled. Existing work is kept, because re-enqueueing a
+ * periodic request on every launch would keep the first run drifting away from the chosen hour.
+ */
+fun scheduleDailyCheck(context: Context, settings: SettingsStore) {
+    val replace = settings.scheduleVersion < SCHEDULE_VERSION
+    scheduleDailyCheck(context, settings.reminderHour, reschedule = replace)
+    if (replace) settings.scheduleVersion = SCHEDULE_VERSION
+}
+
+/** Schedules the check at [hour]; [reschedule] replaces existing work (needed when the hour changes). */
+fun scheduleDailyCheck(context: Context, hour: Int, reschedule: Boolean) {
     val now = LocalDateTime.now()
     var next = now.toLocalDate().atTime(LocalTime.of(hour, 0))
     if (!next.isAfter(now)) next = next.plusDays(1)
@@ -54,7 +69,8 @@ fun scheduleDailyCheck(context: Context, hour: Int) {
         .setInitialDelay(Duration.between(now, next).toMinutes(), TimeUnit.MINUTES)
         .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
         .build()
-    WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, ExistingPeriodicWorkPolicy.UPDATE, request)
+    val policy = if (reschedule) ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE else ExistingPeriodicWorkPolicy.KEEP
+    WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, policy, request)
 }
 
 /** What deserves a nudge today. Kept free of Android types so it can be unit-tested. */
@@ -89,7 +105,7 @@ fun buildDailyDigest(snapshot: Snapshot, today: LocalDate): DailyDigest {
             }
         }
         for (reservation in account.reservations.filter { it.readyForPickup }) {
-            pickups += "${account.label} · ${reservation.title} (${reservation.library})"
+            pickups += "${account.label} · ${reservation.title} (${reservation.library}, ~${reservation.pickupDeadline!!.format(DEADLINE)})"
         }
     }
     return DailyDigest(overdue, dueToday, dueTomorrow, pickups)

@@ -11,12 +11,14 @@ import com.pchuri.returnfairy.data.SettingsStore
 import com.pchuri.returnfairy.data.SnapshotStore
 import com.pchuri.returnfairy.notify.scheduleDailyCheck
 import com.pchuri.returnfairy.update.UpdateChecker
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
 data class DashboardUiState(
@@ -24,6 +26,8 @@ data class DashboardUiState(
     val snapshot: Snapshot? = null,
     val refreshing: Boolean = false,
     val hasAccounts: Boolean = false,
+    /** The last lookup could not reach the site; [snapshot] is the earlier result. */
+    val stale: Boolean = false,
 )
 
 data class SettingsUiState(
@@ -60,12 +64,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     /** Newer release version to offer, or null. */
     val updateVersion: StateFlow<String?> = _updateVersion.asStateFlow()
 
+    private var refreshJob: Job? = null
+
     init {
         refresh()
         checkForUpdate()
     }
-
-    private var refreshJob: Job? = null
 
     /**
      * Looks up every account again. The cached result stays on screen until this finishes.
@@ -84,14 +88,13 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         }
         _dashboard.update { it.copy(refreshing = true, hasAccounts = true) }
         refreshJob = viewModelScope.launch {
-            val snapshot = client.fetchAll(accounts)
-            // Offline (every account failed to connect): keep showing the last result instead of an
-            // error wall. A login failure is shown, so a wrong password is never hidden by old data.
-            val keepOld = snapshot.isOffline() && _dashboard.value.snapshot != null
-            if (!keepOld) snapshots.save(snapshot)
-            _dashboard.update {
-                it.copy(snapshot = if (keepOld) it.snapshot else snapshot, refreshing = false)
-            }
+            val fresh = client.fetchAll(accounts)
+            // Offline (every account failed to connect): show the last result rather than an error
+            // wall. Login failures still show, so a wrong password is never hidden by old data.
+            val cached = _dashboard.value.snapshot
+            val shown = if (fresh.isOffline() && cached != null) fresh.withOfflineFallback(cached) else fresh
+            withContext(Dispatchers.IO) { snapshots.save(shown) }
+            _dashboard.update { it.copy(snapshot = shown, refreshing = false, stale = shown !== fresh) }
         }
     }
 
@@ -116,7 +119,7 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     fun setReminderHour(hour: Int) {
         settings.reminderHour = hour
         _settingsState.update { it.copy(reminderHour = hour) }
-        scheduleDailyCheck(getApplication(), hour)
+        scheduleDailyCheck(getApplication(), hour, reschedule = true)
     }
 
     private fun checkForUpdate() {

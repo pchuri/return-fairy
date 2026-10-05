@@ -1,6 +1,7 @@
 package com.pchuri.returnfairy.data
 
 import android.content.Context
+import android.util.AtomicFile
 import com.pchuri.returnfairy.core.AccountStatus
 import com.pchuri.returnfairy.core.BookStatus
 import com.pchuri.returnfairy.core.LibraryBook
@@ -18,18 +19,27 @@ import java.time.LocalDateTime
  * while a fresh lookup runs. Holds titles and dates, never credentials.
  */
 class SnapshotStore(context: Context) {
-    private val file = File(context.filesDir, "last_snapshot.json")
+    private val file = AtomicFile(File(context.filesDir, "last_snapshot.json"))
 
-    fun load(): Snapshot? = runCatching { SnapshotJson.decode(file.readText()) }.getOrNull()
-
-    fun save(snapshot: Snapshot) {
-        val tmp = File(file.parentFile, file.name + ".tmp")
-        tmp.writeText(SnapshotJson.encode(snapshot))
-        tmp.renameTo(file)
+    fun load(): Snapshot? = synchronized(LOCK) {
+        runCatching { SnapshotJson.decode(String(file.readFully(), Charsets.UTF_8)) }.getOrNull()
     }
 
-    fun clear() {
-        file.delete()
+    /** The app and the daily worker both write here; the lock keeps one write at a time. */
+    fun save(snapshot: Snapshot) = synchronized(LOCK) {
+        val out = file.startWrite()
+        try {
+            out.write(SnapshotJson.encode(snapshot).toByteArray(Charsets.UTF_8))
+            file.finishWrite(out)
+        } catch (e: Exception) {
+            file.failWrite(out)
+        }
+    }
+
+    fun clear() = synchronized(LOCK) { file.delete() }
+
+    private companion object {
+        val LOCK = Any()
     }
 }
 
@@ -41,6 +51,7 @@ object SnapshotJson {
 
     private fun account(a: AccountStatus) = JSONObject()
         .put("label", a.label)
+        .put("userId", a.userId)
         .put("error", a.error?.name ?: JSONObject.NULL)
         .put("books", JSONArray().apply {
             a.books.forEach { b ->
@@ -81,6 +92,7 @@ object SnapshotJson {
                 val reservations = a.getJSONArray("reservations")
                 AccountStatus(
                     label = a.getString("label"),
+                    userId = a.optString("userId"),
                     error = a.optStringOrNull("error")?.let { SplibErrorKind.valueOf(it) },
                     books = (0 until books.length()).map { j ->
                         val b = books.getJSONObject(j)

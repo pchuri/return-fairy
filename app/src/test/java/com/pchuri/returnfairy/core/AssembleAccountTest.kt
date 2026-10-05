@@ -76,4 +76,31 @@ class AssembleAccountTest {
         assertEquals(false, Snapshot(at, listOf(failed(SplibErrorKind.NETWORK), account)).isOffline())
         assertEquals(false, Snapshot(at, emptyList()).isOffline())
     }
+
+    @Test
+    fun offlineFallbackUsesCacheForCurrentAccountsOnly() {
+        val at = java.time.LocalDateTime.of(2026, 10, 5, 9, 0)
+        val cached = Snapshot(at, listOf(account.copy(userId = "hong"), account.copy(label = "지운 계정", userId = "gone")))
+        val fresh = Snapshot(
+            at.plusDays(1),
+            listOf(
+                AccountStatus("길동", emptyList(), emptyList(), SplibErrorKind.NETWORK, userId = "hong"),
+                AccountStatus("새 계정", emptyList(), emptyList(), SplibErrorKind.TIMEOUT, userId = "new"),
+            ),
+        )
+        val shown = fresh.withOfflineFallback(cached)
+        assertEquals(at, shown.fetchedAt)
+        assertEquals(listOf("길동", "새 계정"), shown.accounts.map { it.label })
+        assertEquals(account.books, shown.accounts[0].books)
+        assertEquals(SplibErrorKind.TIMEOUT, shown.accounts[1].error)
+    }
+
+    @Test
+    fun labelFallsBackToSiteNameThenId() {
+        val account = com.pchuri.returnfairy.data.Account("hong", "pw")
+        assertEquals("홍길동", displayLabel(account, "홍길동"))
+        assertEquals("hong", displayLabel(account, ""))
+        assertEquals("길동이", displayLabel(account.copy(label = "길동이"), "홍길동"))
+        assertEquals(false, account.toString().contains("pw"))
+    }
 }

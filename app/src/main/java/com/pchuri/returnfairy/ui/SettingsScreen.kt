@@ -28,6 +28,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -47,7 +48,8 @@ fun SettingsScreen(viewModel: AppViewModel, modifier: Modifier = Modifier) {
     val state by viewModel.settingsState.collectAsStateWithLifecycle()
     var label by rememberSaveable { mutableStateOf("") }
     var userId by rememberSaveable { mutableStateOf("") }
-    var password by rememberSaveable { mutableStateOf("") }
+    // Not rememberSaveable: the password must not end up in saved instance state.
+    var password by remember { mutableStateOf("") }
 
     LazyColumn(
         modifier = modifier.fillMaxSize().padding(horizontal = 16.dp),

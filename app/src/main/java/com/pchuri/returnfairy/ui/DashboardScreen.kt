@@ -85,7 +85,7 @@ fun DashboardScreen(viewModel: AppViewModel, onOpenSettings: () -> Unit, modifie
                 onRefresh = viewModel::refresh,
                 modifier = Modifier.fillMaxSize(),
             ) {
-                Dashboard(state.snapshot!!, state.refreshing)
+                Dashboard(state.snapshot!!, state.refreshing, state.stale)
             }
         }
     }
@@ -93,7 +93,7 @@ fun DashboardScreen(viewModel: AppViewModel, onOpenSettings: () -> Unit, modifie
 
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
-private fun Dashboard(snapshot: Snapshot, refreshing: Boolean) {
+private fun Dashboard(snapshot: Snapshot, refreshing: Boolean, stale: Boolean) {
     val colors = dashColors()
     val today = LocalDate.now()
     val listState = rememberLazyListState()
@@ -107,7 +107,7 @@ private fun Dashboard(snapshot: Snapshot, refreshing: Boolean) {
         modifier = Modifier.fillMaxSize(),
         contentPadding = PaddingValues(bottom = 40.dp),
     ) {
-        item { Header(snapshot, refreshing) }
+        item { Header(snapshot, refreshing, stale) }
         stickyHeader {
             LazyRow(
                 modifier = Modifier.fillMaxWidth().height(TAB_ROW_HEIGHT).background(colors.bg.copy(alpha = 0.94f)),
@@ -120,14 +120,14 @@ private fun Dashboard(snapshot: Snapshot, refreshing: Boolean) {
                 }
             }
         }
-        itemsIndexed(accounts) { _, account ->
+        itemsIndexed(accounts, key = { index, account -> account.userId.ifEmpty { "#$index" } }) { _, account ->
             AccountCard(account, today)
         }
     }
 }
 
 @Composable
-private fun Header(snapshot: Snapshot, refreshing: Boolean) {
+private fun Header(snapshot: Snapshot, refreshing: Boolean, stale: Boolean) {
     val colors = dashColors()
     val accounts = snapshot.accounts
     val total = accounts.sumOf { it.books.size }
@@ -140,8 +140,11 @@ private fun Header(snapshot: Snapshot, refreshing: Boolean) {
         Text(stringResource(R.string.dashboard_title), color = colors.text, fontSize = 20.sp, fontWeight = FontWeight.ExtraBold)
         Spacer(Modifier.height(4.dp))
         Text(
-            text = if (refreshing) stringResource(R.string.dashboard_refreshing)
-            else stringResource(R.string.dashboard_fetched_at, snapshot.fetchedAt.format(FETCHED_FORMAT)),
+            text = when {
+                refreshing -> stringResource(R.string.dashboard_refreshing)
+                stale -> stringResource(R.string.dashboard_offline, snapshot.fetchedAt.format(FETCHED_FORMAT))
+                else -> stringResource(R.string.dashboard_fetched_at, snapshot.fetchedAt.format(FETCHED_FORMAT))
+            },
             color = colors.yellow,
             fontSize = 13.sp,
             fontWeight = FontWeight.Bold,
@@ -231,10 +234,11 @@ private fun errorText(kind: SplibErrorKind) = when (kind) {
     SplibErrorKind.SESSION_EXPIRED -> R.string.error_session
     SplibErrorKind.NETWORK -> R.string.error_network
     SplibErrorKind.TIMEOUT -> R.string.error_timeout
+    SplibErrorKind.SITE_CHANGED -> R.string.error_site_changed
 }
 
 private val NUM_WIDTH = 20.dp
-private val LIB_WIDTH = 60.dp
+private val LIB_WIDTH = 64.dp
 private val DUE_WIDTH = 76.dp
 
 @Composable
@@ -274,7 +278,7 @@ private fun BookRow(number: Int, book: LibraryBook, today: LocalDate) {
         Column(modifier = Modifier.width(LIB_WIDTH)) {
             Text(
                 book.library, color = if (greenLibrary) colors.green else colors.text, fontSize = 13.sp, fontWeight = FontWeight.Bold,
-                maxLines = 1, softWrap = false, overflow = TextOverflow.Clip,
+                maxLines = 2, overflow = TextOverflow.Ellipsis,
             )
             Text(stringResource(libSub), color = colors.sub, fontSize = 11.sp, maxLines = 1, softWrap = false)
         }
@@ -367,7 +371,10 @@ private fun ReservationRow(reservation: Reservation) {
         )
     } else {
         Text(
-            stringResource(R.string.reservation_waiting, reservation.title, reservation.library, reservation.rank),
+            stringResource(
+                R.string.reservation_waiting, reservation.title, reservation.library,
+                if (reservation.rank > 0) reservation.rank.toString() else "?",
+            ),
             color = colors.text, fontSize = 13.sp, modifier = Modifier.padding(vertical = 4.dp),
         )
     }

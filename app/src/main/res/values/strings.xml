@@ -7,6 +7,7 @@
 
     <string name="dashboard_title">📚 Songpa Library Loans</string>
     <string name="dashboard_fetched_at">Updated %1$s</string>
+    <string name="dashboard_offline">Offline · showing %1$s result</string>
     <string name="dashboard_refreshing">Updating…</string>
     <string name="dashboard_summary">%1$d accounts · %2$d books (%3$d interlibrary)</string>
     <string name="dashboard_summary_pickup">" · 🔔 %1$d to pick up"</string>
@@ -25,6 +26,7 @@
     <string name="error_login">wrong ID or password</string>
     <string name="error_session">signed out by the site, try again</string>
     <string name="error_network">could not reach the library site</string>
+    <string name="error_site_changed">the site could not be read (it may have changed)</string>
     <string name="error_timeout">the lookup took too long</string>
 
     <string name="col_library">Library</string>
@@ -46,7 +48,7 @@
     <string name="due_unknown">Due ?</string>
     <string name="reservations_title">%1$d reservations</string>
     <string name="reservation_ready">🔔 %1$s · %2$s ready (until %3$s)</string>
-    <string name="reservation_waiting">· %1$s · %2$s #%3$d in line</string>
+    <string name="reservation_waiting">· %1$s · %2$s #%3$s in line</string>
 
     <string name="settings_accounts_section">Songpa Library accounts</string>
     <string name="settings_accounts_description">Your splib.or.kr ID and password. The password is encrypted with the Android Keystore and stays on this device.</string>

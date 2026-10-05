@@ -11,7 +11,7 @@
 앱은 다음 정보를 **이용자의 기기에만** 저장합니다.
 
 - **도서관 계정**: 이용자가 입력한 아이디·비밀번호와 표시 이름. 조회할 때 HTTPS로 송파구립도서관 서버(splib.or.kr)에 직접 로그인하는 데만 쓰입니다.
-- **마지막 조회 결과**: 책 제목, 반납일, 도서관, 예약 순번 등. 앱을 열 때 바로 보여 주고 인터넷이 안 될 때 확인하기 위해 앱 전용 저장소에 둡니다. 계정 정보는 들어가지 않습니다.
+- **마지막 조회 결과**: 책 제목, 반납일, 도서관, 예약 순번 등. 앱을 열 때 바로 보여 주고 인터넷이 안 될 때 확인하기 위해 앱 전용 저장소에 둡니다. 결과를 계정과 맞추려고 계정 아이디를 함께 저장하며, 비밀번호는 들어가지 않습니다.
 - **설정**: 알림 시각, 새 버전 확인 여부.
 
 앱은 분석 도구·광고 SDK·추적 기술을 사용하지 않으며, 개발자가 운영하는 서버가 없어 어떤 정보도 개발자에게 전송되지 않습니다.
@@ -26,7 +26,8 @@
 ### 3. 권한
 
 - **인터넷**: 송파구립도서관 조회와 새 버전 확인에만 사용됩니다.
-- **알림**: 매일 정한 시각의 반납·찾아올 책 알림에만 사용됩니다. 이 시각에 앱이 백그라운드에서 도서관을 조회합니다.
+- **알림**: 반납·찾아올 책 알림에만 사용됩니다.
+- **백그라운드 조회**: 매일 정한 시각(설정 → 알림)에 앱이 백그라운드에서 도서관을 조회해 마지막 조회 결과를 갱신하고, 알림이 허용되어 있으면 알립니다. 이를 위해 Android WorkManager가 네트워크 상태 확인·재부팅 후 예약 유지 등 필요한 시스템 권한을 함께 사용합니다.
 
 ### 4. 정보의 삭제
 
@@ -50,7 +51,7 @@ Return Fairy (the "app") shows loans, interlibrary requests and reservations for
 The app stores the following **only on your device**:
 
 - **Library accounts**: the ID, password and display name you enter. They are used only to sign in directly to the library server (splib.or.kr) over HTTPS.
-- **Last lookup result**: book titles, due dates, libraries, reservation ranks and similar, kept in app-private storage so the app opens instantly and works offline. No credentials are included.
+- **Last lookup result**: book titles, due dates, libraries, reservation ranks and similar, kept in app-private storage so the app opens instantly and works offline. The account ID is stored with it to match results to accounts; passwords are not.
 - **Settings**: reminder time and the update-check switch.
 
 The app contains no analytics, no ads, and no tracking. There is no developer-operated server, so no information is ever transmitted to the developer.
@@ -65,7 +66,8 @@ The app contains no analytics, no ads, and no tracking. There is no developer-op
 ### 3. Permissions
 
 - **Internet**: used only for library lookups and the update check.
-- **Notifications**: used only for the daily due-date and pickup reminder. At that time the app looks up your accounts in the background.
+- **Notifications**: used only for due-date and pickup reminders.
+- **Background lookup**: every day at the chosen time (Settings → Notifications) the app looks up your accounts in the background to refresh the last result, and notifies you if notifications are allowed. Android WorkManager uses the system permissions it needs for this, such as checking network state and keeping the schedule after a reboot.
 
 ### 4. Deletion
 
