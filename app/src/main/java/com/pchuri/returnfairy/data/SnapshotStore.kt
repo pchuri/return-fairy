@@ -26,8 +26,9 @@ class SnapshotStore(context: Context) {
     }
 
     /** The app and the daily worker both write here; the lock keeps one write at a time. */
-    fun save(snapshot: Snapshot) = synchronized(LOCK) {
-        val out = file.startWrite()
+    fun save(snapshot: Snapshot): Unit = synchronized(LOCK) {
+        // A cache that cannot be written (disk full) is not worth crashing over.
+        val out = runCatching { file.startWrite() }.getOrNull() ?: return
         try {
             out.write(SnapshotJson.encode(snapshot).toByteArray(Charsets.UTF_8))
             file.finishWrite(out)

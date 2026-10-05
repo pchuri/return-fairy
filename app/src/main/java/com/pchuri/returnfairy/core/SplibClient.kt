@@ -14,6 +14,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import okhttp3.Call
 import okhttp3.Callback
 import okhttp3.Cookie
+import okhttp3.Dispatcher
 import okhttp3.CookieJar
 import okhttp3.FormBody
 import okhttp3.HttpUrl
@@ -69,6 +70,8 @@ open class SplibClient {
         .readTimeout(10, TimeUnit.SECONDS)
         // Whole request, like aiohttp total=10 in songpa_core.
         .callTimeout(10, TimeUnit.SECONDS)
+        // All accounts at once, like asyncio.gather; OkHttp allows only 5 per host by default.
+        .dispatcher(Dispatcher().apply { maxRequestsPerHost = 16 })
         .build()
 
     private fun newSession(): Pair<OkHttpClient, MemoryCookieJar> {
@@ -96,10 +99,14 @@ open class SplibClient {
         repeat(FETCH_MAX_RETRIES) { attempt ->
             try {
                 client.newCall(Request.Builder().url(url).build()).await().use { response ->
-                    if (response.code != 200) throw FetchException("HTTP ${response.code} from $url")
+                    if (response.code != 200) {
+                        // 4xx: the page is gone or moved. 5xx: the server is having trouble.
+                        throw FetchException("HTTP ${response.code} from $url", siteChanged = response.code in 400..499)
+                    }
                     val text = response.body?.string().orEmpty()
                     if ("<!-- footer -->" in text) return text
-                    lastError = FetchException("Incomplete response from $url: missing footer")
+                    // Usually a cut-off page that a retry fixes; if every try lacks it, the layout changed.
+                    lastError = FetchException("Incomplete response from $url: missing footer", siteChanged = true)
                 }
             } catch (e: CancellationException) {
                 throw e
@@ -108,7 +115,10 @@ open class SplibClient {
             }
             if (attempt < FETCH_MAX_RETRIES - 1) delay(1000)
         }
-        throw FetchException("Failed to fetch $url after $FETCH_MAX_RETRIES attempts", lastError)
+        throw FetchException(
+            "Failed to fetch $url after $FETCH_MAX_RETRIES attempts", lastError,
+            siteChanged = (lastError as? FetchException)?.siteChanged == true,
+        )
     }
 
     private suspend fun fetchAccount(account: Account): AccountStatus = withContext(Dispatchers.IO) {
@@ -145,7 +155,7 @@ open class SplibClient {
                 } catch (e: IOException) {
                     failed(account, SplibErrorKind.NETWORK)
                 } catch (e: FetchException) {
-                    failed(account, SplibErrorKind.NETWORK)
+                    failed(account, if (e.siteChanged) SplibErrorKind.SITE_CHANGED else SplibErrorKind.NETWORK)
                 } catch (e: Exception) {
                     // Pages arrived but could not be parsed. Shown as an error, never as "offline".
                     failed(account, SplibErrorKind.SITE_CHANGED)

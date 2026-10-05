@@ -88,6 +88,8 @@ data class Snapshot(val fetchedAt: LocalDateTime, val accounts: List<AccountStat
      */
     fun withOfflineFallback(cached: Snapshot): Snapshot {
         val cachedById = cached.accounts.filter { it.error == null && it.userId.isNotEmpty() }.associateBy { it.userId }
+        // Nothing to fall back on: show this result as is rather than call it "old data".
+        if (accounts.none { it.userId in cachedById }) return this
         return Snapshot(
             fetchedAt = cached.fetchedAt,
             accounts = accounts.map { fresh -> cachedById[fresh.userId]?.copy(label = fresh.label) ?: fresh },
@@ -102,4 +104,5 @@ enum class SplibErrorKind {
 }
 
 class AuthException(val kind: SplibErrorKind, message: String) : Exception(message)
-class FetchException(message: String, cause: Throwable? = null) : Exception(message, cause)
+/** [siteChanged]: the server answered but not with a usable page (4xx, page without the footer marker). */
+class FetchException(message: String, cause: Throwable? = null, val siteChanged: Boolean = false) : Exception(message, cause)

@@ -39,7 +39,8 @@ object SplibParsers {
     private val RANK_PATTERN = Regex("""예약순번\s*:\s*(\d+)""")
     private val WAITING_COUNT_PATTERN = Regex("""\((\d+)\s*명\s*예약\)""")
     private val PAGE_NUMBER_PATTERN = Regex("""^\d+$""")
-    private val WHITESPACE = Regex("""[\s\u00A0]+""")
+    /** Unicode whitespace (nbsp, ideographic space…), like Python's \s and str.split(). */
+    private val WHITESPACE = Regex("""(?U)\s+""")
 
     /** Branches whose local name differs from the official one. */
     private val LIBRARY_ALIASES = mapOf(
@@ -79,6 +80,9 @@ object SplibParsers {
         walk(this)
         return out
     }
+
+    /** Python str.strip(): also drops nbsp, which Java's trim() keeps. */
+    private fun String.pyStrip(): String = trim { it.isWhitespace() || it == '\u00A0' }
 
     private fun squash(text: String?): String = (text ?: "").replace(WHITESPACE, " ").trim()
 
@@ -126,7 +130,7 @@ object SplibParsers {
         val barcodeInfo = doc.selectFirst("div.barcodeInfo")
             ?: throw AuthException(SplibErrorKind.SESSION_EXPIRED, "index page missing user info")
         // The name may be missing or wrapped in a tag; that is not a sign-out (the label falls back).
-        val name = (barcodeInfo.childNodes().firstOrNull() as? TextNode)?.wholeText?.trim().orEmpty()
+        val name = (barcodeInfo.childNodes().firstOrNull() as? TextNode)?.wholeText?.pyStrip().orEmpty()
 
         val loanLink = doc.selectFirst("a[href=${SplibConfig.LOAN_PATH}]")
         val interlibraryLink = doc.selectFirst("a[href=${SplibConfig.INTERLIBRARY_PATH}]")
@@ -236,7 +240,7 @@ object SplibParsers {
     /** Last page number in the pager, capped so an odd pager cannot cause hundreds of requests. */
     fun parseMaxPage(content: String): Int {
         val paging = Jsoup.parse(content).selectFirst(".paging") ?: return 1
-        val pages = paging.textNodesDeep().map { it.wholeText.trim() }
+        val pages = paging.textNodesDeep().map { it.wholeText.pyStrip() }
             .filter { PAGE_NUMBER_PATTERN.matches(it) }.map { it.toBigInteger().min(MAX_PAGES.toBigInteger()).toInt() }
         return pages.maxOrNull() ?: 1
     }

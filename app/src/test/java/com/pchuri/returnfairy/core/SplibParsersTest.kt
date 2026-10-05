@@ -161,4 +161,9 @@ class SplibParsersTest {
         val html = row("어린<br>왕자", """<div class="info"><strong>송파거마도서관</strong></div>""", "")
         assertEquals("어린왕자", SplibParsers.parseReservationStatus(html).single().title)
     }
+
+    @Test
+    fun nbspAroundPageNumbersIsIgnored() {
+        assertEquals(3, SplibParsers.parseMaxPage("""<div class="paging"><a>1</a><a>&nbsp;3&nbsp;</a></div>"""))
+    }
 }

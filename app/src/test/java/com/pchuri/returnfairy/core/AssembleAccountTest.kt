@@ -103,4 +103,12 @@ class AssembleAccountTest {
         assertEquals("길동이", displayLabel(account.copy(label = "길동이"), "홍길동"))
         assertEquals(false, account.toString().contains("pw"))
     }
+
+    @Test
+    fun offlineFallbackWithoutMatchingCacheKeepsTheFreshResult() {
+        val at = java.time.LocalDateTime.of(2026, 10, 5, 9, 0)
+        val fresh = Snapshot(at, listOf(AccountStatus("길동", emptyList(), emptyList(), SplibErrorKind.NETWORK, userId = "hong")))
+        val oldFormatCache = Snapshot(at.minusDays(1), listOf(account))
+        assertEquals(true, fresh.withOfflineFallback(oldFormatCache) === fresh)
+    }
 }

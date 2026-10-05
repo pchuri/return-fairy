@@ -91,7 +91,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
             val fresh = client.fetchAll(accounts)
             // Offline (every account failed to connect): show the last result rather than an error
             // wall. Login failures still show, so a wrong password is never hidden by old data.
-            val cached = _dashboard.value.snapshot
+            // The daily worker may have saved something newer while the app sat in the background.
+            val cached = listOfNotNull(_dashboard.value.snapshot, withContext(Dispatchers.IO) { snapshots.load() })
+                .maxByOrNull { it.fetchedAt }
             val shown = if (fresh.isOffline() && cached != null) fresh.withOfflineFallback(cached) else fresh
             withContext(Dispatchers.IO) { snapshots.save(shown) }
             _dashboard.update { it.copy(snapshot = shown, refreshing = false, stale = shown !== fresh) }

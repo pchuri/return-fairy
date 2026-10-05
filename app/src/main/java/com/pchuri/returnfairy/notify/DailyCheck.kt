@@ -104,8 +104,9 @@ fun buildDailyDigest(snapshot: Snapshot, today: LocalDate): DailyDigest {
                 BookStatus.IN_TRANSIT -> Unit
             }
         }
-        for (reservation in account.reservations.filter { it.readyForPickup }) {
-            pickups += "${account.label} · ${reservation.title} (${reservation.library}, ~${reservation.pickupDeadline!!.format(DEADLINE)})"
+        for (reservation in account.reservations) {
+            val deadline = reservation.pickupDeadline ?: continue
+            pickups += "${account.label} · ${reservation.title} (${reservation.library}, ~${deadline.format(DEADLINE)})"
         }
     }
     return DailyDigest(overdue, dueToday, dueTomorrow, pickups)
