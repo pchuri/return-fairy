@@ -35,8 +35,12 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pchuri.returnfairy.R
 import com.pchuri.returnfairy.data.SettingsStore
+import com.pchuri.returnfairy.data.cleanUpLegacyData
+import androidx.lifecycle.lifecycleScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.pchuri.returnfairy.notify.ensureNotificationChannel
-import com.pchuri.returnfairy.notify.scheduleDailyReminder
+import com.pchuri.returnfairy.notify.scheduleDailyCheck
 import com.pchuri.returnfairy.update.UpdateChecker
 
 class MainActivity : ComponentActivity() {
@@ -49,7 +53,10 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         ensureNotificationChannel(this)
-        scheduleDailyReminder(this, SettingsStore(this).reminderHour)
+        val settings = SettingsStore(this)
+        scheduleDailyCheck(this, settings)
+        // Deleting the 3.x AI model can take a moment; keep it off the main thread.
+        lifecycleScope.launch(Dispatchers.IO) { cleanUpLegacyData(applicationContext, settings) }
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
         ) {
@@ -75,7 +82,7 @@ fun ReturnFairyApp(viewModel: AppViewModel = viewModel()) {
                     selected = selectedTab == 0,
                     onClick = { selectedTab = 0 },
                     icon = { Icon(Icons.AutoMirrored.Filled.MenuBook, contentDescription = null) },
-                    label = { Text(stringResource(R.string.tab_books)) },
+                    label = { Text(stringResource(R.string.tab_dashboard)) },
                 )
                 NavigationBarItem(
                     selected = selectedTab == 1,
@@ -88,7 +95,7 @@ fun ReturnFairyApp(viewModel: AppViewModel = viewModel()) {
     ) { innerPadding ->
         val modifier = Modifier.padding(innerPadding)
         when (selectedTab) {
-            0 -> HomeScreen(viewModel, modifier)
+            0 -> DashboardScreen(viewModel, onOpenSettings = { selectedTab = 1 }, modifier)
             else -> SettingsScreen(viewModel, modifier)
         }
     }

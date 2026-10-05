@@ -1,17 +1,18 @@
 # 반납요정 개인정보처리방침 / Return Fairy Privacy Policy
 
-최종 수정일 / Last updated: 2026-10-05
+최종 수정일 / Last updated: 2026-10-06
 
 ## 한국어
 
-반납요정(이하 "앱")은 빌린 책의 반납일을 관리하는 도구입니다. 본 방침은 앱이 정보를 어떻게 처리하는지 설명합니다.
+반납요정(이하 "앱")은 송파구립도서관(splib.or.kr) 계정의 대출·상호대차·예약 현황을 보여 주는 도구입니다. 본 방침은 앱이 정보를 어떻게 처리하는지 설명합니다.
 
-### 1. 수집·저장하는 정보
+### 1. 저장하는 정보
 
 앱은 다음 정보를 **이용자의 기기에만** 저장합니다.
 
-- **책 기록**: 이용자가 직접 입력한 제목, 대출일/반납일, 빌린 사람 등
-- **도서관 계정 정보(선택)**: 송파도서관 연동 기능 사용 시 입력한 회원번호와 비밀번호. 로그인 시 HTTPS로 송파도서관 서버(splib.or.kr)에 직접 전송됩니다.
+- **도서관 계정**: 이용자가 입력한 아이디·비밀번호와 표시 이름. 조회할 때 HTTPS로 송파구립도서관 서버(splib.or.kr)에 직접 로그인하는 데만 쓰입니다.
+- **마지막 조회 결과**: 책 제목, 반납일, 도서관, 예약 순번 등. 앱을 열 때 바로 보여 주고 인터넷이 안 될 때 확인하기 위해 앱 전용 저장소에 둡니다. 결과를 계정과 맞추려고 계정 아이디를 함께 저장하며, 비밀번호는 들어가지 않습니다.
+- **설정**: 알림 시각, 새 버전 확인 여부.
 
 앱은 분석 도구·광고 SDK·추적 기술을 사용하지 않으며, 개발자가 운영하는 서버가 없어 어떤 정보도 개발자에게 전송되지 않습니다.
 
@@ -24,14 +25,13 @@
 
 ### 3. 권한
 
-- **알림**: 반납일 알림 발송에만 사용됩니다.
-- **카메라**: 대출 영수증·책 표지를 촬영해 글자를 읽는 데만 사용됩니다. 문자 인식은 기기 안에서 처리되며, 촬영한 사진은 임시 저장 후 다음 촬영 시 대체되고 외부로 전송되지 않습니다. 한국어 문자 인식 모델은 처음 사용할 때 Google Play 서비스가 내려받습니다(사진은 보내지 않음).
-
-실험실 기능인 AI 사진 인식을 사용하는 경우, 이용자의 요청으로 내려받거나 직접 가져온 AI 모델 파일이 이 앱의 저장 공간(앱 삭제 시 함께 삭제)에 보관되며 사진 인식은 전부 기기 안에서 처리됩니다. 설치된 모델은 규칙으로 인식되지 않는 자연어 반납일 표현을 해석할 때도 사용될 수 있습니다. 모델 다운로드는 이용자가 버튼을 눌렀을 때만 공개 저장소(Hugging Face)에서 이루어지며, 사진·반납일 표현·인식 결과·개인정보는 어떤 것도 전송되지 않습니다.
+- **인터넷**: 송파구립도서관 조회와 새 버전 확인에만 사용됩니다.
+- **알림**: 반납·찾아올 책 알림에만 사용됩니다.
+- **백그라운드 조회**: 매일 정한 시각(설정 → 알림)에 앱이 백그라운드에서 도서관을 조회해 마지막 조회 결과를 갱신하고, 알림이 허용되어 있으면 알립니다. 이를 위해 Android WorkManager가 네트워크 상태 확인·재부팅 후 예약 유지 등 필요한 시스템 권한을 함께 사용합니다.
 
 ### 4. 정보의 삭제
 
-- 앱 내에서 책 기록과 계정을 개별 삭제할 수 있습니다.
+- 설정에서 계정을 삭제할 수 있습니다. 계정을 모두 삭제하면 마지막 조회 결과도 함께 지워집니다.
 - 앱을 삭제하면 저장된 모든 정보가 함께 삭제됩니다.
 
 ### 5. 아동의 개인정보
@@ -44,14 +44,15 @@
 
 ## English
 
-Return Fairy (the "app") is a tool for tracking due dates of borrowed books. This policy explains how the app handles information.
+Return Fairy (the "app") shows loans, interlibrary requests and reservations for Songpa Public Library (splib.or.kr) accounts. This policy explains how the app handles information.
 
 ### 1. Information stored
 
 The app stores the following **only on your device**:
 
-- **Book records**: titles, loan/due dates, and borrower tags you enter
-- **Library credentials (optional)**: if you use the Songpa Library sync feature, the member ID and password you enter are sent directly to the library server (splib.or.kr) over HTTPS for login only.
+- **Library accounts**: the ID, password and display name you enter. They are used only to sign in directly to the library server (splib.or.kr) over HTTPS.
+- **Last lookup result**: book titles, due dates, libraries, reservation ranks and similar, kept in app-private storage so the app opens instantly and works offline. The account ID is stored with it to match results to accounts; passwords are not.
+- **Settings**: reminder time and the update-check switch.
 
 The app contains no analytics, no ads, and no tracking. There is no developer-operated server, so no information is ever transmitted to the developer.
 
@@ -64,22 +65,13 @@ The app contains no analytics, no ads, and no tracking. There is no developer-op
 
 ### 3. Permissions
 
-- **Notifications**: used solely for due-date reminders.
-- **Camera**: used only to photograph checkout receipts and book covers for text
-  recognition. Recognition runs on-device; the photo is kept in a temporary file
-  that the next scan overwrites, and is never uploaded. The Korean text-recognition
-  model is downloaded by Google Play services on first use (no photos are sent).
-
-If you enable the experimental AI photo recognition (Labs), an AI model file —
-downloaded from a public repository (Hugging Face) only when you request it, or
-imported by you — is stored in this app's storage (deleted with the app), and all recognition runs
-entirely on the device. The installed model may also interpret natural-language
-due-date phrases that the built-in rules do not recognize. Photos, due-date
-phrases, and recognition results are never uploaded.
+- **Internet**: used only for library lookups and the update check.
+- **Notifications**: used only for due-date and pickup reminders.
+- **Background lookup**: every day at the chosen time (Settings → Notifications) the app looks up your accounts in the background to refresh the last result, and notifies you if notifications are allowed. Android WorkManager uses the system permissions it needs for this, such as checking network state and keeping the schedule after a reboot.
 
 ### 4. Deletion
 
-- Book records and accounts can be deleted individually in the app.
+- Accounts can be removed in Settings. Removing all accounts also deletes the last lookup result.
 - Uninstalling the app deletes all stored data.
 
 ### 5. Children
