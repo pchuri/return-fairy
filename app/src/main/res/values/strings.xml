@@ -2,118 +2,82 @@
 <resources>
     <string name="app_name">Return Fairy</string>
 
-    <!-- Navigation -->
-    <string name="tab_books">My Books</string>
+    <string name="tab_dashboard">Loans</string>
     <string name="tab_settings">Settings</string>
 
-    <!-- Home -->
-    <string name="empty_no_books">No borrowed books yet.\nTap + to add one.</string>
-    <string name="section_returned">Returned</string>
-    <string name="badge_overdue">Overdue</string>
-    <string name="badge_due_today">D-Day</string>
-    <string name="action_return">Return</string>
-    <string name="action_extend">+7 days</string>
-    <string name="action_undo_return">Undo</string>
-    <string name="action_delete">Delete</string>
-    <string name="action_add_book">Add a book</string>
-    <string name="borrowed_by">%s</string>
-    <string name="due_on">Due %s</string>
-    <string name="returned_on">Returned %s</string>
-    <string name="label_interlibrary">Interlibrary</string>
-    <string name="label_library_synced">Library-synced</string>
-    <string name="status_requested">Requested</string>
-    <string name="status_sending">On the way</string>
-    <string name="status_obtained">Ready for pickup</string>
+    <string name="dashboard_title">📚 Songpa Library Loans</string>
+    <string name="dashboard_fetched_at">Updated %1$s</string>
+    <string name="dashboard_refreshing">Updating…</string>
+    <string name="dashboard_summary">%1$d accounts · %2$d books (%3$d interlibrary)</string>
+    <string name="dashboard_summary_pickup">" · 🔔 %1$d to pick up"</string>
+    <string name="dashboard_first_lookup">Looking up your library accounts…</string>
+    <string name="dashboard_no_accounts_title">Add a Songpa Library account</string>
+    <string name="dashboard_no_accounts_body">Enter your splib.or.kr ID and password in Settings to see loans, interlibrary requests and reservations for every account on one screen.</string>
+    <string name="dashboard_open_settings">Open settings</string>
 
-    <!-- Add book -->
-    <string name="add_title">Add a book</string>
-    <string name="field_title">Title</string>
-    <string name="field_borrower">Borrower (optional)</string>
-    <string name="field_library">Library / source (optional)</string>
-    <string name="field_loan_date">Borrowed on</string>
-    <string name="field_due_date">Due on</string>
-    <string name="natural_due_label">Describe the due date</string>
-    <string name="natural_due_example">Example: in 5 days, next Friday</string>
-    <string name="natural_due_hint">Common phrases are calculated instantly; other phrases use the installed on-device AI.</string>
-    <string name="natural_due_all_books">The interpreted date applies to every book currently shown.</string>
-    <string name="natural_due_resolving">The on-device AI is interpreting the date…</string>
-    <string name="natural_due_resolved">Set to %s. Check the date before saving.</string>
-    <string name="natural_due_no_model">That phrase was not understood. Install the AI model or choose a date manually.</string>
-    <string name="natural_due_not_understood">No single due date could be determined. Rephrase it or choose a date manually.</string>
-    <string name="action_apply">Apply</string>
-    <string name="preset_days">%d days</string>
-    <string name="action_save">Save</string>
-    <string name="action_cancel">Cancel</string>
+    <string name="card_books">%1$d</string>
+    <string name="card_empty">No books right now.</string>
+    <string name="card_error">⚠️ Lookup failed: %1$s</string>
+    <string name="stat_loans">%1$d books</string>
+    <string name="stat_interlibrary">%1$d interlibrary</string>
+    <string name="stat_pickup">🔔 %1$d to pick up</string>
+    <string name="stat_reservation_ready">🔖 %1$d reservation ready</string>
+    <string name="error_login">wrong ID or password</string>
+    <string name="error_session">signed out by the site, try again</string>
+    <string name="error_network">could not reach the library site</string>
+    <string name="error_timeout">the lookup took too long</string>
 
-    <!-- Scan -->
-    <string name="scan_add_manually">Enter manually</string>
-    <string name="scan_receipt">Scan checkout receipt</string>
-    <string name="scan_receipt_hint">Registers several books with their due dates at once</string>
-    <string name="scan_cover">Scan book cover</string>
-    <string name="scan_cover_hint">Reads the title from the cover</string>
-    <string name="scan_scanning">Reading the photo…</string>
-    <string name="scan_review_title">Check the results</string>
-    <string name="scan_review_hint">Edit anything that came out wrong, then save.</string>
-    <string name="scan_nothing_found">No text could be read. Try again with better lighting, or enter it manually.</string>
-    <string name="scan_failed">Scan failed. Try again or enter it manually.</string>
-    <string name="scan_no_due_date">No due date — set one after saving</string>
-    <string name="scan_save_count">Save %d book(s)</string>
-    <string name="scan_camera_denied">Camera permission is needed to scan.</string>
+    <string name="col_library">Library</string>
+    <string name="col_title">Title</string>
+    <string name="col_status">Status/Due</string>
+    <string name="lib_sub_pickup">pick up</string>
+    <string name="lib_sub_transit">arriving</string>
+    <string name="lib_sub_interlibrary">pick/return</string>
+    <string name="lib_sub_loan">lent by</string>
+    <string name="loc_arrived_prefix">"📍Arrived: "</string>
+    <string name="loc_holding_paren">" (from %1$s)"</string>
+    <string name="loc_holding">from %1$s</string>
+    <string name="tag_interlibrary">Interlibrary</string>
+    <string name="badge_pickup">Pick up</string>
+    <string name="badge_transit">In transit</string>
+    <string name="badge_overdue">%1$d days late</string>
+    <string name="badge_today">Due today</string>
+    <string name="badge_dday">D-%1$d</string>
+    <string name="due_unknown">Due ?</string>
+    <string name="reservations_title">%1$d reservations</string>
+    <string name="reservation_ready">🔔 %1$s · %2$s ready (until %3$s)</string>
+    <string name="reservation_waiting">· %1$s · %2$s #%3$d in line</string>
 
-    <string name="scan_model_downloading">Preparing the text recognizer (first use only). Try again in a moment.</string>
-
-    <string name="scan_tap_to_add">Tap the text that belongs in the title</string>
-
-    <!-- AI photo recognition (experimental, on-device LLM) -->
-    <string name="scan_ai">AI photo recognition (Labs)</string>
-    <string name="scan_ai_hint">Reads several books at once, even from messy shots</string>
-    <string name="scan_ai_running">The on-device AI is reading the photo… this can take up to a minute.</string>
-    <string name="scan_ai_failed">AI recognition failed on this device (it needs a recent high-end phone). Try the receipt/cover scan or manual entry.</string>
-    <string name="settings_ai_section">AI photo recognition (Labs)</string>
-    <string name="settings_ai_description">Experimental: register books by photographing them — several at once, even in cluttered shots. Runs entirely on this device; photos never leave the phone. Needs a recent high-end phone (Pixel 8 / Galaxy S23 or newer) and about 2.5 GB of storage.</string>
-    <string name="settings_ai_model_none">The Gemma model (about 2.4 GB) is downloaded once, stored on this device, and works offline afterwards. Wi-Fi is recommended for the download. Use of the model is subject to Google\'s Gemma Terms of Use (ai.google.dev/gemma/terms).</string>
-    <string name="settings_ai_download">Download model (2.4 GB)</string>
-    <string name="settings_ai_downloading">Downloading… %d%%</string>
-    <string name="settings_ai_import">Import a model file instead</string>
-    <string name="settings_ai_importing">Importing… %d%%</string>
-    <string name="settings_ai_delete">Remove model</string>
-    <string name="settings_ai_import_error">Import failed: %s</string>
-
-    <!-- Settings -->
-    <string name="settings_reminder_section">Reminders</string>
-    <string name="settings_reminder_time">Daily reminder time</string>
-    <string name="settings_reminder_time_value">%d:00</string>
-    <string name="settings_default_period">Default loan period</string>
-    <string name="settings_splib_section">Songpa Library sync (Korea)</string>
-    <string name="settings_splib_description">Optional: link Songpa Public Library (splib.or.kr) accounts to import loans automatically.</string>
-    <string name="splib_sync_now">Sync now</string>
-    <string name="splib_syncing">Syncing…</string>
-    <string name="splib_sync_result">%1$d added · %2$d updated · %3$d returned</string>
-    <string name="splib_accounts">Library accounts</string>
-    <string name="splib_member_id">Member ID</string>
-    <string name="splib_password">Password</string>
-    <string name="splib_add_update">Add / Update</string>
-    <string name="splib_no_accounts">No accounts registered</string>
-    <string name="splib_keystore_note">Passwords are encrypted with the device Android Keystore and stored only on this device.</string>
-
-    <!-- Errors -->
-    <string name="error_login_failed">Login failed — check the member ID and password</string>
-    <string name="error_session_expired">Session expired — try again</string>
-    <string name="error_network">Network error — try again</string>
-    <string name="error_timeout">Request timed out</string>
-    <string name="error_account_prefix">%1$s: %2$s</string>
-
-    <!-- Notifications -->
-    <string name="channel_due_reminders">Return reminders</string>
-    <string name="notif_title_overdue">%d overdue book(s)!</string>
-    <string name="notif_title_due_today">%d book(s) due today</string>
-    <string name="notif_title_due_tomorrow">%d book(s) due tomorrow</string>
-    <string name="update_title">New version available</string>
-    <string name="update_message">Return Fairy %1$s is out. Open the download page?</string>
-    <string name="update_download">Download</string>
-    <string name="update_later">Later</string>
+    <string name="settings_accounts_section">Songpa Library accounts</string>
+    <string name="settings_accounts_description">Your splib.or.kr ID and password. The password is encrypted with the Android Keystore and stays on this device.</string>
+    <string name="settings_no_accounts">No accounts yet</string>
+    <string name="settings_label_hint">Name (optional, defaults to the name on the site)</string>
+    <string name="settings_label_from_site">(name from the library site)</string>
+    <string name="settings_user_id">ID</string>
+    <string name="settings_password">Password</string>
+    <string name="settings_add_account">Add / update</string>
+    <string name="settings_remove_account">Remove</string>
+    <string name="settings_reminder_section">Notifications</string>
+    <string name="settings_reminder_time">Daily check time</string>
+    <string name="settings_reminder_time_value">%1$d:00</string>
+    <string name="settings_reminder_description">At this time the app looks up your accounts and notifies you about overdue books, books due today or tomorrow, and books waiting to be picked up.</string>
     <string name="settings_app_section">App</string>
     <string name="settings_check_updates">Check for updates</string>
     <string name="settings_check_updates_description">When you open the app (at most once a day), asks GitHub for the latest version. Nothing about you or your books is sent.</string>
     <string name="settings_app_version">Version %1$s</string>
+
+    <string name="update_title">New version available</string>
+    <string name="update_message">Return Fairy %1$s is out. Open the download page?</string>
+    <string name="update_download">Download</string>
+    <string name="update_later">Later</string>
+
+    <string name="channel_due_reminders">Library reminders</string>
+    <string name="notif_title_overdue">%d overdue book(s)!</string>
+    <string name="notif_title_due_today">%d book(s) due today</string>
+    <string name="notif_title_due_tomorrow">%d book(s) due tomorrow</string>
+    <string name="notif_title_pickup">%d book(s) to pick up</string>
+    <string name="notif_line_overdue">Overdue · %1$s</string>
+    <string name="notif_line_due_today">Due today · %1$s</string>
+    <string name="notif_line_due_tomorrow">D-1 · %1$s</string>
+    <string name="notif_line_pickup">Pick up · %1$s</string>
 </resources>

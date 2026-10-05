@@ -4,7 +4,6 @@ plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
-    alias(libs.plugins.ksp)
 }
 
 // Release signing: keystore.properties (not committed) or CI env vars
@@ -24,9 +23,8 @@ android {
         applicationId = "com.pchuri.returnfairy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 16
-        versionName = "3.0.0"
-        testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+        versionCode = 17
+        versionName = "4.0.0"
     }
 
     signingConfigs {
@@ -78,21 +76,8 @@ dependencies {
     implementation(libs.kotlinx.coroutines.android)
     implementation(libs.okhttp)
     implementation(libs.jsoup)
-    implementation(libs.androidx.room.runtime)
-    implementation(libs.androidx.room.ktx)
-    ksp(libs.androidx.room.compiler)
     implementation(libs.androidx.work.runtime)
-    // Unbundled: model is downloaded by Play Services on first use, no APK size cost
-    implementation(libs.mlkit.text.korean)
-    // Experimental on-device LLM photo recognition (LiteRT-LM, the engine the
-    // AI Edge Gallery app uses; the model itself is downloaded on demand)
-    implementation(libs.litertlm)
-    implementation(libs.androidx.exifinterface)
 
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
-
-    androidTestImplementation(libs.junit)
-    androidTestImplementation(libs.androidx.test.runner)
-    androidTestImplementation(libs.androidx.test.ext.junit)
 }

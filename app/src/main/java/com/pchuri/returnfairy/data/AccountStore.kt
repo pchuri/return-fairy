@@ -12,7 +12,8 @@ import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
-data class Account(val userId: String, val password: String)
+/** [label] is the name shown on the dashboard; blank means "use the name the library site shows". */
+data class Account(val userId: String, val password: String, val label: String = "")
 
 /**
  * Stores library accounts in SharedPreferences with passwords encrypted
@@ -66,7 +67,7 @@ class AccountStore(context: Context) {
                 val obj = array.getJSONObject(i)
                 val userId = obj.optString("userId").takeIf { it.isNotBlank() } ?: return@mapNotNull null
                 val password = decrypt(obj.optString("encryptedPassword")) ?: return@mapNotNull null
-                Account(userId, password)
+                Account(userId, password, obj.optString("label"))
             }
         } catch (e: Exception) {
             emptyList()
@@ -80,6 +81,7 @@ class AccountStore(context: Context) {
                 JSONObject()
                     .put("userId", account.userId)
                     .put("encryptedPassword", encrypt(account.password))
+                    .put("label", account.label)
             )
         }
         prefs.edit().putString(KEY_ACCOUNTS, array.toString()).apply()
