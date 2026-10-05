@@ -1,0 +1,119 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">반납요정</string>
+
+    <!-- Navigation -->
+    <string name="tab_books">내 책</string>
+    <string name="tab_settings">설정</string>
+
+    <!-- Home -->
+    <string name="empty_no_books">빌린 책이 없습니다.\n+ 버튼으로 등록하세요.</string>
+    <string name="section_returned">반납한 책</string>
+    <string name="badge_overdue">연체</string>
+    <string name="badge_due_today">D-Day</string>
+    <string name="action_return">반납</string>
+    <string name="action_extend">+7일</string>
+    <string name="action_undo_return">되돌리기</string>
+    <string name="action_delete">삭제</string>
+    <string name="action_add_book">책 등록</string>
+    <string name="borrowed_by">%s</string>
+    <string name="due_on">%s 반납</string>
+    <string name="returned_on">%s 반납함</string>
+    <string name="label_interlibrary">책솔이</string>
+    <string name="label_library_synced">도서관 연동</string>
+    <string name="status_requested">요청중</string>
+    <string name="status_sending">발송</string>
+    <string name="status_obtained">도착</string>
+
+    <!-- Add book -->
+    <string name="add_title">책 등록</string>
+    <string name="field_title">제목</string>
+    <string name="field_borrower">빌린 사람 (선택)</string>
+    <string name="field_library">도서관/출처 (선택)</string>
+    <string name="field_loan_date">대출일</string>
+    <string name="field_due_date">반납일</string>
+    <string name="natural_due_label">반납일을 말하듯 입력</string>
+    <string name="natural_due_example">예: 5일 후, 다음 주 금요일</string>
+    <string name="natural_due_hint">자주 쓰는 표현은 바로 계산하고, 나머지는 설치된 기기 내 AI가 해석합니다.</string>
+    <string name="natural_due_all_books">해석한 날짜는 현재 보이는 모든 책에 적용됩니다.</string>
+    <string name="natural_due_resolving">기기 내 AI가 날짜 표현을 해석하는 중…</string>
+    <string name="natural_due_resolved">%s로 설정했습니다. 저장 전에 날짜를 확인하세요.</string>
+    <string name="natural_due_no_model">표현을 이해하지 못했습니다. AI 모델을 설치하거나 날짜를 직접 선택하세요.</string>
+    <string name="natural_due_not_understood">하나의 반납일로 해석하지 못했습니다. 표현을 바꾸거나 날짜를 직접 선택하세요.</string>
+    <string name="action_apply">적용</string>
+    <string name="preset_days">%d일</string>
+    <string name="action_save">저장</string>
+    <string name="action_cancel">취소</string>
+
+    <!-- Scan -->
+    <string name="scan_add_manually">직접 입력</string>
+    <string name="scan_receipt">대출 영수증 촬영</string>
+    <string name="scan_receipt_hint">여러 권과 반납일을 한 번에 등록합니다</string>
+    <string name="scan_cover">책 표지 촬영</string>
+    <string name="scan_cover_hint">표지에서 제목을 읽어옵니다</string>
+    <string name="scan_scanning">사진을 읽는 중…</string>
+    <string name="scan_review_title">결과 확인</string>
+    <string name="scan_review_hint">잘못 읽은 부분은 고친 뒤 저장하세요.</string>
+    <string name="scan_nothing_found">글자를 읽지 못했습니다. 밝은 곳에서 다시 찍거나 직접 입력해주세요.</string>
+    <string name="scan_failed">인식에 실패했습니다. 다시 시도하거나 직접 입력해주세요.</string>
+    <string name="scan_no_due_date">반납일 없음 — 저장 후 지정하세요</string>
+    <string name="scan_save_count">%d권 저장</string>
+    <string name="scan_camera_denied">촬영하려면 카메라 권한이 필요합니다.</string>
+
+    <string name="scan_model_downloading">문자 인식 기능을 준비하는 중입니다(최초 1회). 잠시 후 다시 시도해주세요.</string>
+
+    <string name="scan_tap_to_add">제목에 넣을 글자를 탭하세요</string>
+
+    <!-- AI photo recognition (experimental, on-device LLM) -->
+    <string name="scan_ai">AI 사진 인식 (실험실)</string>
+    <string name="scan_ai_hint">여러 권이 섞인 사진도 한 번에 읽어냅니다</string>
+    <string name="scan_ai_running">기기 내 AI가 사진을 읽는 중… 최대 1분 정도 걸릴 수 있어요.</string>
+    <string name="scan_ai_failed">이 기기에서 AI 인식에 실패했습니다(최신 고사양 기기가 필요합니다). 영수증/표지 촬영이나 직접 입력을 이용해주세요.</string>
+    <string name="settings_ai_section">AI 사진 인식 (실험실)</string>
+    <string name="settings_ai_description">실험 기능: 책을 사진으로 찍기만 하면 등록합니다 — 여러 권, 지저분한 배경도 가능. 전부 기기 안에서 처리되며 사진은 외부로 전송되지 않습니다. 최신 고사양 기기(Pixel 8 / Galaxy S23 이상)와 약 2.5GB 저장 공간이 필요합니다.</string>
+    <string name="settings_ai_model_none">Gemma 모델(약 2.4GB)을 처음 한 번만 내려받아 기기에 저장하며, 이후에는 인터넷 없이 동작합니다. 다운로드는 Wi-Fi에서 받는 것을 권장합니다. 모델 사용에는 Google Gemma 이용약관(ai.google.dev/gemma/terms)이 적용됩니다.</string>
+    <string name="settings_ai_download">모델 다운로드 (2.4GB)</string>
+    <string name="settings_ai_downloading">다운로드 중… %d%%</string>
+    <string name="settings_ai_import">파일에서 직접 가져오기</string>
+    <string name="settings_ai_importing">가져오는 중… %d%%</string>
+    <string name="settings_ai_delete">모델 삭제</string>
+    <string name="settings_ai_import_error">가져오기 실패: %s</string>
+
+    <!-- Settings -->
+    <string name="settings_reminder_section">알림</string>
+    <string name="settings_reminder_time">알림 시각</string>
+    <string name="settings_reminder_time_value">%d시</string>
+    <string name="settings_default_period">기본 대출 기간</string>
+    <string name="settings_splib_section">송파도서관 연동</string>
+    <string name="settings_splib_description">선택 기능: 송파도서관(splib.or.kr) 계정을 연동하면 대출 도서를 자동으로 가져옵니다.</string>
+    <string name="splib_sync_now">지금 가져오기</string>
+    <string name="splib_syncing">가져오는 중…</string>
+    <string name="splib_sync_result">추가 %1$d · 갱신 %2$d · 반납 처리 %3$d</string>
+    <string name="splib_accounts">도서관 계정</string>
+    <string name="splib_member_id">회원번호</string>
+    <string name="splib_password">비밀번호</string>
+    <string name="splib_add_update">추가 / 수정</string>
+    <string name="splib_no_accounts">등록된 계정이 없습니다</string>
+    <string name="splib_keystore_note">비밀번호는 기기의 Android Keystore로 암호화되어 이 기기에만 저장됩니다.</string>
+
+    <!-- Errors -->
+    <string name="error_login_failed">로그인 실패 — 회원번호와 비밀번호를 확인해주세요</string>
+    <string name="error_session_expired">세션이 만료되었습니다 — 다시 시도해주세요</string>
+    <string name="error_network">네트워크 오류 — 다시 시도해주세요</string>
+    <string name="error_timeout">조회 시간이 초과되었습니다</string>
+    <string name="error_account_prefix">%1$s: %2$s</string>
+
+    <!-- Notifications -->
+    <string name="channel_due_reminders">반납 알림</string>
+    <string name="notif_title_overdue">연체된 책이 %d권 있어요!</string>
+    <string name="notif_title_due_today">오늘 반납할 책이 %d권 있어요</string>
+    <string name="notif_title_due_tomorrow">내일 반납할 책이 %d권 있어요</string>
+    <string name="update_title">새 버전이 있어요</string>
+    <string name="update_message">반납요정 %1$s 버전이 나왔어요. 다운로드 페이지를 열까요?</string>
+    <string name="update_download">다운로드</string>
+    <string name="update_later">나중에</string>
+    <string name="settings_app_section">앱</string>
+    <string name="settings_check_updates">새 버전 확인</string>
+    <string name="settings_check_updates_description">앱을 열 때 하루 한 번까지 GitHub에 최신 버전만 물어봐요. 내 정보나 책 목록은 보내지 않아요.</string>
+    <string name="settings_app_version">버전 %1$s</string>
+</resources>
