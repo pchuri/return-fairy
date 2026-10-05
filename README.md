@@ -10,6 +10,7 @@ Optional Songpa Public Library (Seoul) sync imports loans automatically. Korean/
   <img src="docs/images/screenshot-ko-1-books.png" alt="내 책 화면" width="240">
   <img src="docs/images/screenshot-ko-2-add-book.png" alt="책 등록" width="240">
   <img src="docs/images/screenshot-ko-2-settings.png" alt="설정 화면" width="240">
+  <img src="docs/images/screenshot-ko-3-settings-dark.png" alt="다크 모드 · 새 버전 확인 설정" width="240">
 </p>
 
 > 스크린샷은 예시 데이터로 만든 화면입니다.
