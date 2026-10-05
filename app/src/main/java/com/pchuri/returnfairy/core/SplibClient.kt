@@ -151,7 +151,7 @@ open class SplibClient {
     )
 }
 
-/** Mirrors the combination logic of desktop core/splib.py `_fetch_user_info`. */
+/** Mirrors the combination logic of songpa-loan-tracker songpa_core/splib.py `_fetch_user_info`. */
 internal fun assembleUserInfo(
     indexInfo: IndexInfo,
     loanBooks: List<LoanBook>,

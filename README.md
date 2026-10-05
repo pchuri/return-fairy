@@ -49,7 +49,7 @@ Optional Songpa Public Library (Seoul) sync imports loans automatically. Korean/
 ## 관련 프로젝트
 
 PC·아이폰·터미널에서 송파구립도서관 대출 현황을 보는 도구는
-[songpa-loan-tracker](https://github.com/pchuri/songpa-loan-tracker)에 있습니다. 이 앱의 도서관 연동 코드는 그 리포의 `core/` 파서를 Kotlin으로 옮긴 것입니다.
+[songpa-loan-tracker](https://github.com/pchuri/songpa-loan-tracker)에 있습니다. 이 앱의 도서관 연동 코드는 그 리포의 `songpa_core/` 파서를 Kotlin으로 옮긴 것입니다.
 
 ---
 
@@ -68,7 +68,7 @@ PC·아이폰·터미널에서 송파구립도서관 대출 현황을 보는 도
 
 ```
 app/src/main/java/com/pchuri/returnfairy/
-├── core/          # 송파구립도서관 로그인/파싱 — songpa-loan-tracker core/와 맞춰 유지
+├── core/          # 송파구립도서관 로그인/파싱 — songpa-loan-tracker songpa_core/와 맞춰 유지
 ├── data/
 │   ├── db/               # Room: BookEntry, BookDao, AppDatabase
 │   ├── BookRepository.kt # 책 CRUD + 도서관 연동 병합(syncFromSplib)
