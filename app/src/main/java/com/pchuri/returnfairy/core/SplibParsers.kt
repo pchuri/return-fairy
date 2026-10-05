@@ -39,8 +39,11 @@ object SplibParsers {
     private val RANK_PATTERN = Regex("""예약순번\s*:\s*(\d+)""")
     private val WAITING_COUNT_PATTERN = Regex("""\((\d+)\s*명\s*예약\)""")
     private val PAGE_NUMBER_PATTERN = Regex("""^\d+$""")
-    /** Unicode whitespace (nbsp, ideographic space…), like Python's \s and str.split(). */
-    private val WHITESPACE = Regex("""(?U)\s+""")
+    /**
+     * Unicode whitespace (nbsp, ideographic space…), like Python's \s and str.split().
+     * Spelled out because Android's ICU regex rejects the (?U) flag that desktop Java accepts.
+     */
+    private val WHITESPACE = Regex("""[\s\p{Z}]+""")
 
     /** Branches whose local name differs from the official one. */
     private val LIBRARY_ALIASES = mapOf(
