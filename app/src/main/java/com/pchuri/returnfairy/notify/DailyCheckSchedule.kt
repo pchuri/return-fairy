@@ -21,15 +21,28 @@ internal fun nextDailyCheckAt(hour: Int, now: ZonedDateTime): Long {
     return next.toInstant().toEpochMilli()
 }
 
+/** New/replacement work uses an initial delay, never an override (REPLACE rejects it). */
+internal fun dailyCheckEnqueueRequest(
+    workerClass: Class<out ListenableWorker>,
+    hour: Int,
+    now: ZonedDateTime = ZonedDateTime.now(),
+): PeriodicWorkRequest = dailyCheckBuilder(workerClass)
+    .setInitialDelay(nextDailyCheckAt(hour, now) - now.toInstant().toEpochMilli(), TimeUnit.MILLISECONDS)
+    .build()
+
+private fun dailyCheckBuilder(workerClass: Class<out ListenableWorker>) =
+    PeriodicWorkRequest.Builder(workerClass, 1, TimeUnit.DAYS)
+        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, DAILY_CHECK_BACKOFF_MINUTES, TimeUnit.MINUTES)
+        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+
+/** Only for updating existing work: enqueueing this with CANCEL_AND_REENQUEUE is invalid. */
 internal fun dailyCheckRequest(
     workerClass: Class<out ListenableWorker>,
     hour: Int,
     now: ZonedDateTime = ZonedDateTime.now(),
     id: UUID? = null,
 ): PeriodicWorkRequest {
-    val builder = PeriodicWorkRequest.Builder(workerClass, 1, TimeUnit.DAYS)
-        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, DAILY_CHECK_BACKOFF_MINUTES, TimeUnit.MINUTES)
-        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
+    val builder = dailyCheckBuilder(workerClass)
         .setNextScheduleTimeOverride(nextDailyCheckAt(hour, now))
     if (id != null) builder.setId(id)
     return builder.build()

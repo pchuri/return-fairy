@@ -63,9 +63,35 @@ class DailyCheckScheduleTest {
     @Test
     fun initialRunKeepsSecondsAndMillisecondPrecisionUntilTheChosenHour() {
         val now = start.minusSeconds(1).minusNanos(123_000_000)
-        val request = dailyCheckRequest(ScheduleWorker::class.java, 9, now)
+        val request = dailyCheckEnqueueRequest(ScheduleWorker::class.java, 9, now)
+        assertEquals(1123L, request.workSpec.initialDelay)
+        assertEquals(Long.MAX_VALUE, request.workSpec.nextScheduleTimeOverride)
+        assertEquals(0, request.workSpec.nextScheduleTimeOverrideGeneration)
         request.workSpec.lastEnqueueTime = now.toInstant().toEpochMilli()
         assertEquals(start.toInstant().toEpochMilli(), request.workSpec.calculateNextRunTime())
+    }
+
+    @Test
+    fun freshEnqueuePreservesNetworkConstraintAndRetryPolicy() {
+        val spec = dailyCheckEnqueueRequest(ScheduleWorker::class.java, 9, start).workSpec
+        assertEquals(NetworkType.CONNECTED, spec.constraints.requiredNetworkType)
+        assertEquals(BackoffPolicy.EXPONENTIAL, spec.backoffPolicy)
+        assertEquals(TimeUnit.MINUTES.toMillis(15), spec.backoffDelayDuration)
+        assertEquals(TimeUnit.DAYS.toMillis(1), spec.intervalDuration)
+        assertEquals(TimeUnit.DAYS.toMillis(1), spec.initialDelay)
+    }
+
+    @Test
+    fun freshEnqueueKeepsTheLocalHourAcrossShortAndLongDays() {
+        val zone = ZoneId.of("America/New_York")
+        for (now in listOf(
+            ZonedDateTime.of(2026, 3, 7, 9, 0, 0, 0, zone),
+            ZonedDateTime.of(2026, 10, 31, 9, 0, 0, 0, zone),
+        )) {
+            val spec = dailyCheckEnqueueRequest(ScheduleWorker::class.java, 9, now).workSpec
+            spec.lastEnqueueTime = now.toInstant().toEpochMilli()
+            assertEquals(now.plusDays(1).toInstant().toEpochMilli(), spec.calculateNextRunTime())
+        }
     }
 
     @Test

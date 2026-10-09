@@ -55,7 +55,9 @@ fun scheduleDailyCheck(context: Context, settings: SettingsStore) {
 
 /** Schedules the check at [hour]; [reschedule] replaces existing work (needed when the hour changes). */
 fun scheduleDailyCheck(context: Context, hour: Int, reschedule: Boolean) {
-    val request = dailyCheckRequest(DailyCheckWorker::class.java, hour)
+    // Hour changes must cancel the old retry chain and give the new schedule a new ID.
+    // An initial delay is compatible with replacement; next-run overrides are not.
+    val request = dailyCheckEnqueueRequest(DailyCheckWorker::class.java, hour)
     val policy = if (reschedule) ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE else ExistingPeriodicWorkPolicy.KEEP
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, policy, request)
 }

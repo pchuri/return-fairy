@@ -64,6 +64,9 @@ android {
     buildFeatures {
         compose = true
     }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
+    }
 }
 
 dependencies {
@@ -84,4 +87,6 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
+    testImplementation("androidx.work:work-testing:${libs.versions.work.get()}")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }
