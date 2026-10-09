@@ -89,6 +89,8 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"  
   (15·30·60분, 실제 실행 시각은 Android의 네트워크·절전 제약에 따라 늦어질 수 있음).
   재시도 중에는 알림을 미루고, 복구되거나 재시도를 소진한 마지막 조회의 성공 계정만 알립니다.
   저장된 이전 결과로 알리지 않으며, 같은 재시도 과정에서 성공 계정의 알림을 반복하지 않습니다.
+  재시도가 끝나면 다음 조회는 설정한 현지 시각으로 다시 맞춥니다. 예를 들어 오전 9시 조회가
+  10시 45분에 끝나도 다음 날은 오전 9시로 예약합니다(실제 실행은 Android 제약으로 늦어질 수 있음).
 
 - `LiveFetchTest`: 실제 계정으로 조회를 확인합니다.
   (`RETURNFAIRY_TEST_USERID`/`RETURNFAIRY_TEST_PASSWORD`를 줄 때만 실행. 도서관이 클라우드 IP를 막아 CI에서는 건너뜁니다)

@@ -8,14 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
+import android.util.Log
 import androidx.core.app.NotificationCompat
 import androidx.core.app.NotificationManagerCompat
-import androidx.work.BackoffPolicy
-import androidx.work.Constraints
 import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
-import androidx.work.NetworkType
-import androidx.work.PeriodicWorkRequestBuilder
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
 import com.pchuri.returnfairy.R
@@ -24,11 +21,9 @@ import com.pchuri.returnfairy.data.AccountStore
 import com.pchuri.returnfairy.data.SettingsStore
 import com.pchuri.returnfairy.data.SnapshotStore
 import com.pchuri.returnfairy.ui.MainActivity
-import java.time.Duration
 import java.time.LocalDate
-import java.time.LocalDateTime
-import java.time.LocalTime
-import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.runInterruptible
 
 const val CHANNEL_DUE_REMINDERS = "due_reminders"
 private const val WORK_NAME = "due_reminder_daily"
@@ -46,7 +41,7 @@ fun ensureNotificationChannel(context: Context) {
 }
 
 /** How the work is scheduled. Bump to replace work enqueued by an older version once. */
-private const val SCHEDULE_VERSION = 3
+private const val SCHEDULE_VERSION = 4
 
 /**
  * Makes sure the daily check is scheduled. Existing work is kept, because re-enqueueing a
@@ -60,21 +55,31 @@ fun scheduleDailyCheck(context: Context, settings: SettingsStore) {
 
 /** Schedules the check at [hour]; [reschedule] replaces existing work (needed when the hour changes). */
 fun scheduleDailyCheck(context: Context, hour: Int, reschedule: Boolean) {
-    val now = LocalDateTime.now()
-    var next = now.toLocalDate().atTime(LocalTime.of(hour, 0))
-    if (!next.isAfter(now)) next = next.plusDays(1)
-    val request = PeriodicWorkRequestBuilder<DailyCheckWorker>(1, TimeUnit.DAYS)
-        .setBackoffCriteria(BackoffPolicy.EXPONENTIAL, DAILY_CHECK_BACKOFF_MINUTES, TimeUnit.MINUTES)
-        .setInitialDelay(Duration.between(now, next).toMinutes(), TimeUnit.MINUTES)
-        .setConstraints(Constraints.Builder().setRequiredNetworkType(NetworkType.CONNECTED).build())
-        .build()
+    val request = dailyCheckRequest(DailyCheckWorker::class.java, hour)
     val policy = if (reschedule) ExistingPeriodicWorkPolicy.CANCEL_AND_REENQUEUE else ExistingPeriodicWorkPolicy.KEEP
     WorkManager.getInstance(context).enqueueUniquePeriodicWork(WORK_NAME, policy, request)
 }
 
 class DailyCheckWorker(context: Context, params: WorkerParameters) : CoroutineWorker(context, params) {
 
-    override suspend fun doWork(): Result {
+    override suspend fun doWork(): Result = finishDailyCheck(
+        checkAndNotify(),
+        onScheduleFailure = { Log.w("DailyCheck", "Could not reanchor the daily check; keeping periodic fallback", it) },
+    ) {
+        // Periodic work normally starts its next 24-hour interval at completion. Override
+        // that only after the terminal attempt, otherwise it would suppress retry backoff.
+        // Update this exact work ID, so a concurrent hour change cannot be overwritten and
+        // this running worker is never cancelled/re-enqueued by its own completion.
+        val request = dailyCheckRequest(
+            DailyCheckWorker::class.java, SettingsStore(applicationContext).reminderHour, id = id,
+        )
+        runInterruptible(Dispatchers.IO) {
+            // Persist the override before returning success to WorkManager.
+            WorkManager.getInstance(applicationContext).updateWork(request).get()
+        }
+    }
+
+    private suspend fun checkAndNotify(): Result {
         val context = applicationContext
         val accounts = AccountStore(context).load()
         if (accounts.isEmpty()) return Result.success()
