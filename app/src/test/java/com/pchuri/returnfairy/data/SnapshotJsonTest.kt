@@ -31,4 +31,25 @@ class SnapshotJsonTest {
         )
         assertEquals(snapshot, SnapshotJson.decode(SnapshotJson.encode(snapshot)))
     }
+    @Test
+    fun staleAccountRetainsItsErrorAndSuccessTimeAcrossRestart() {
+        val at = LocalDateTime.of(2026, 10, 5, 9, 0)
+        val cached = Snapshot(at, listOf(AccountStatus("name", emptyList(), emptyList(), userId = "id")))
+        val fresh = Snapshot(at.plusHours(1), listOf(AccountStatus("name", emptyList(), emptyList(), SplibErrorKind.TIMEOUT, "id")))
+        val merged = fresh.withCachedFallback(cached)
+        val decoded = SnapshotJson.decode(SnapshotJson.encode(merged))
+        assertEquals(merged, decoded)
+        assertEquals(true, decoded.hasStaleResults)
+        assertEquals(at, decoded.accounts.single().lastSuccessfulAt)
+    }
+
+    @Test
+    fun oldCacheWithoutSuccessMetadataStillDecodesAndCanBeRetained() {
+        val at = LocalDateTime.of(2026, 10, 5, 9, 0)
+        val decoded = SnapshotJson.decode("""{"fetchedAt":"2026-10-05T09:00","accounts":[{"label":"name","userId":"id","error":null,"books":[],"reservations":[]}]}""")
+        assertEquals(null, decoded.accounts.single().lastSuccessfulAt)
+        val fresh = Snapshot(at.plusHours(1), listOf(AccountStatus("name", emptyList(), emptyList(), SplibErrorKind.NETWORK, "id")))
+        assertEquals(at, fresh.withCachedFallback(decoded).accounts.single().lastSuccessfulAt)
+    }
+
 }

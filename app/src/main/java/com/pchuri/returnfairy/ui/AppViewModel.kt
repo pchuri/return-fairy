@@ -26,9 +26,10 @@ data class DashboardUiState(
     val snapshot: Snapshot? = null,
     val refreshing: Boolean = false,
     val hasAccounts: Boolean = false,
-    /** The last lookup could not reach the site; [snapshot] is the earlier result. */
-    val stale: Boolean = false,
-)
+) {
+    /** At least one account is showing a retained result after a connection failure. */
+    val stale: Boolean get() = snapshot?.hasStaleResults == true
+}
 
 data class SettingsUiState(
     val accounts: List<Account> = emptyList(),
@@ -89,14 +90,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
         _dashboard.update { it.copy(refreshing = true, hasAccounts = true) }
         refreshJob = viewModelScope.launch {
             val fresh = client.fetchAll(accounts)
-            // Offline (every account failed to connect): show the last result rather than an error
-            // wall. Login failures still show, so a wrong password is never hidden by old data.
-            // The daily worker may have saved something newer while the app sat in the background.
-            val cached = listOfNotNull(_dashboard.value.snapshot, withContext(Dispatchers.IO) { snapshots.load() })
-                .maxByOrNull { it.fetchedAt }
-            val shown = if (fresh.isOffline() && cached != null) fresh.withOfflineFallback(cached) else fresh
-            withContext(Dispatchers.IO) { snapshots.save(shown) }
-            _dashboard.update { it.copy(snapshot = shown, refreshing = false, stale = shown !== fresh) }
+            // Merge per account, including partial failures. The store reads the latest worker
+            // result while holding the write lock; memory is a fallback if saving previously failed.
+            val shown = withContext(Dispatchers.IO) {
+                snapshots.mergeAndSave(fresh, _dashboard.value.snapshot)
+            }
+            _dashboard.update { it.copy(snapshot = shown, refreshing = false) }
         }
     }
 

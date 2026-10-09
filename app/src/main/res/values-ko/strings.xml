@@ -7,6 +7,8 @@
 
     <string name="dashboard_title">📚 송파도서관 대출 현황</string>
     <string name="dashboard_fetched_at">조회 시각 %1$s</string>
+    <string name="dashboard_stale">일부 이전 결과 표시 · 조회 시각 %1$s</string>
+    <string name="card_stale">연결 안 됨 · 마지막 성공한 %1$s 결과</string>
     <string name="dashboard_offline">연결 안 됨 · %1$s 결과</string>
     <string name="dashboard_refreshing">조회 중…</string>
     <string name="dashboard_summary">%1$d개 계정 · 총 %2$d권 (상호대차 %3$d)</string>

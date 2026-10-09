@@ -65,9 +65,13 @@ data class AccountStatus(
     val error: SplibErrorKind? = null,
     /** Library login ID, kept so a cached result can be matched to its account. Not displayed. */
     val userId: String = "",
+    /** Time these books/reservations were last fetched successfully, retained across outages. */
+    val lastSuccessfulAt: LocalDateTime? = null,
 ) {
     val interlibraryCount: Int get() = books.count { it.isInterlibrary }
     val isConnectionFailure: Boolean get() = error == SplibErrorKind.NETWORK || error == SplibErrorKind.TIMEOUT
+    /** A failed connection with a retained successful result, including a successful empty list. */
+    val isStale: Boolean get() = isConnectionFailure && lastSuccessfulAt != null
     val pickupBookCount: Int get() = books.count { it.status == BookStatus.READY_FOR_PICKUP }
     val readyReservationCount: Int get() = reservations.count { it.readyForPickup }
 
@@ -81,19 +85,29 @@ data class Snapshot(val fetchedAt: LocalDateTime, val accounts: List<AccountStat
     /** Every account failed to reach the site (no network, site down), as opposed to a login problem. */
     fun isOffline(): Boolean = accounts.isNotEmpty() && accounts.all { it.isConnectionFailure }
 
+    val hasStaleResults: Boolean get() = accounts.any { it.isStale }
+
     /**
-     * For an offline result: each account's last good cached entry (under its current label) where
-     * there is one, else this result's error entry. Accounts no longer configured are dropped, so a
-     * removed account's books do not linger. Keeps the cache's time, since that is when the data is from.
+     * Merge each current account independently. Only connection failures may reuse a successful
+     * result; authentication/layout errors remain visible and are never cached as fresh data.
+     * The snapshot time is the latest lookup attempt; each account keeps its own success time.
+     * Iterating the new account list also drops removed accounts and uses current labels.
      */
-    fun withOfflineFallback(cached: Snapshot): Snapshot {
-        val cachedById = cached.accounts.filter { it.error == null && it.userId.isNotEmpty() }.associateBy { it.userId }
-        // Nothing to fall back on: show this result as is rather than call it "old data".
-        if (accounts.none { it.userId in cachedById }) return this
-        return Snapshot(
-            fetchedAt = cached.fetchedAt,
-            accounts = accounts.map { fresh -> cachedById[fresh.userId]?.copy(label = fresh.label) ?: fresh },
-        )
+    fun withCachedFallback(vararg cached: Snapshot?): Snapshot {
+        val candidates = cached.filterNotNull().flatMap { snapshot ->
+            snapshot.accounts.filter { it.userId.isNotEmpty() && (it.error == null || it.isStale) }
+                .map { it.copy(lastSuccessfulAt = it.lastSuccessfulAt ?: snapshot.fetchedAt) }
+        }.groupBy { it.userId }
+        return copy(accounts = accounts.map { fresh ->
+            when {
+                fresh.error == null -> fresh.copy(lastSuccessfulAt = fetchedAt)
+                fresh.isConnectionFailure -> {
+                    val previous = candidates[fresh.userId]?.maxByOrNull { it.lastSuccessfulAt!! }
+                    previous?.copy(label = fresh.label, error = fresh.error) ?: fresh
+                }
+                else -> fresh
+            }
+        })
     }
 }
 
