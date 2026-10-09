@@ -83,6 +83,12 @@ export JAVA_HOME="/Applications/Android Studio.app/Contents/jbr/Contents/Home"  
 ./gradlew testDebugUnitTest assembleDebug
 ```
 
+Debug APKs install separately as **Return Fairy (Test)** / **반납요정 (Test)**
+(`com.pchuri.returnfairy.debug`). Keep the signed release installed; do not clear
+its data or uninstall it to test a PR. See the English
+[test installation and isolation guide](docs/TEST_INSTALL.md) for artifact checks,
+separate accounts/settings, and test-to-test signing limitations.
+
 - 일시적인 연결 실패는 계정별로 마지막 성공 결과를 유지하며, 화면에 그 시각과 이전 결과임을 표시합니다.
   로그인·세션·페이지 오류는 이전 결과로 숨기지 않습니다.
 - 매일 조회에서 연결 실패가 있으면 WorkManager가 15분부터 지수 백오프로 최대 3회 재시도합니다

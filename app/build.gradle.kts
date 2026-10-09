@@ -40,6 +40,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Install beside the signed release without replacing its app-private data.
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
