@@ -37,6 +37,11 @@ class SnapshotStore(context: Context) {
         }
     }
 
+    /** Merge and write under one lock so foreground and background lookups share the latest cache. */
+    fun mergeAndSave(fresh: Snapshot, inMemory: Snapshot? = null): Snapshot = synchronized(LOCK) {
+        fresh.withCachedFallback(load(), inMemory).also { save(it) }
+    }
+
     fun clear() = synchronized(LOCK) { file.delete() }
 
     private companion object {
@@ -54,6 +59,7 @@ object SnapshotJson {
         .put("label", a.label)
         .put("userId", a.userId)
         .put("error", a.error?.name ?: JSONObject.NULL)
+        .put("lastSuccessfulAt", a.lastSuccessfulAt?.toString() ?: JSONObject.NULL)
         .put("books", JSONArray().apply {
             a.books.forEach { b ->
                 put(
@@ -95,6 +101,7 @@ object SnapshotJson {
                     label = a.getString("label"),
                     userId = a.optString("userId"),
                     error = a.optStringOrNull("error")?.let { SplibErrorKind.valueOf(it) },
+                    lastSuccessfulAt = a.optStringOrNull("lastSuccessfulAt")?.let(LocalDateTime::parse),
                     books = (0 until books.length()).map { j ->
                         val b = books.getJSONObject(j)
                         LibraryBook(

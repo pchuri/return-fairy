@@ -40,6 +40,10 @@ android {
     }
 
     buildTypes {
+        debug {
+            // Install beside the signed release without replacing its app-private data.
+            applicationIdSuffix = ".debug"
+        }
         release {
             isMinifyEnabled = true
             isShrinkResources = true
@@ -59,6 +63,9 @@ android {
     }
     buildFeatures {
         compose = true
+    }
+    testOptions {
+        unitTests.isIncludeAndroidResources = true
     }
 }
 
@@ -80,4 +87,8 @@ dependencies {
 
     testImplementation(libs.junit)
     testImplementation(libs.org.json)
+    testImplementation("androidx.work:work-testing:${libs.versions.work.get()}")
+    // WorkManager keeps Room runtime-only; database assertions need its API at test compile time.
+    testImplementation("androidx.room:room-runtime:2.6.1")
+    testImplementation("org.robolectric:robolectric:4.14.1")
 }

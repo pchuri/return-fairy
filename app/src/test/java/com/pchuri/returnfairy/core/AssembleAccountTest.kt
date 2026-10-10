@@ -88,8 +88,10 @@ class AssembleAccountTest {
                 AccountStatus("새 계정", emptyList(), emptyList(), SplibErrorKind.TIMEOUT, userId = "new"),
             ),
         )
-        val shown = fresh.withOfflineFallback(cached)
-        assertEquals(at, shown.fetchedAt)
+        val shown = fresh.withCachedFallback(cached)
+        assertEquals(at.plusDays(1), shown.fetchedAt)
+        assertEquals(at, shown.accounts[0].lastSuccessfulAt)
+        assertEquals(true, shown.accounts[0].isStale)
         assertEquals(listOf("길동", "새 계정"), shown.accounts.map { it.label })
         assertEquals(account.books, shown.accounts[0].books)
         assertEquals(SplibErrorKind.TIMEOUT, shown.accounts[1].error)
@@ -109,6 +111,6 @@ class AssembleAccountTest {
         val at = java.time.LocalDateTime.of(2026, 10, 5, 9, 0)
         val fresh = Snapshot(at, listOf(AccountStatus("길동", emptyList(), emptyList(), SplibErrorKind.NETWORK, userId = "hong")))
         val oldFormatCache = Snapshot(at.minusDays(1), listOf(account))
-        assertEquals(true, fresh.withOfflineFallback(oldFormatCache) === fresh)
+        assertEquals(fresh, fresh.withCachedFallback(oldFormatCache))
     }
 }

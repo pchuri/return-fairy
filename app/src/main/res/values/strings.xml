@@ -7,6 +7,8 @@
 
     <string name="dashboard_title">📚 Songpa Library Loans</string>
     <string name="dashboard_fetched_at">Updated %1$s</string>
+    <string name="dashboard_stale">Some results are older · checked %1$s</string>
+    <string name="card_stale">Connection failed · showing data from %1$s</string>
     <string name="dashboard_offline">Offline · showing %1$s result</string>
     <string name="dashboard_refreshing">Updating…</string>
     <string name="dashboard_summary">%1$d accounts · %2$d books (%3$d interlibrary)</string>

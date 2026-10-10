@@ -25,14 +25,41 @@ jobs:
       - name: Setup Gradle
         uses: gradle/actions/setup-gradle@v4
 
+      - name: Debug package guard tests
+        run: python3 -m unittest discover -s scripts -p 'test_*.py' -v
+
       - name: Unit tests and debug APK
         run: ./gradlew testDebugUnitTest assembleDebug
+
+      - name: Upload unit test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: return-fairy-unit-test-results
+          path: app/build/test-results/testDebugUnitTest/
+          if-no-files-found: warn
+
+      - name: Verify isolated test APK
+        run: |
+          BUILD_TOOLS="$ANDROID_HOME/build-tools/$(ls "$ANDROID_HOME/build-tools" | sort -V | tail -1)"
+          APK=app/build/outputs/apk/debug/app-debug.apk
+          REPORT=app/build/outputs/apk/debug/test-package-verification.txt
+          echo "Built commit: $(git rev-parse HEAD)" > "$REPORT"
+          python3 scripts/check_debug_package.py "$APK" \
+            --aapt2 "$BUILD_TOOLS/aapt2" \
+            --apkanalyzer "$ANDROID_HOME/cmdline-tools/latest/bin/apkanalyzer" >> "$REPORT"
+          "$BUILD_TOOLS/apksigner" verify --print-certs "$APK" >> "$REPORT"
+          sha256sum "$APK" >> "$REPORT"
+          cat "$REPORT"
 
       - name: Upload debug APK
         uses: actions/upload-artifact@v4
         with:
           name: return-fairy-debug-apk
-          path: app/build/outputs/apk/debug/app-debug.apk
+          path: |
+            app/build/outputs/apk/debug/app-debug.apk
+            app/build/outputs/apk/debug/test-package-verification.txt
+          if-no-files-found: error
 
   # Push a tag like v4.0.1 (matching versionName) to publish a signed APK on GitHub Releases.
   release:

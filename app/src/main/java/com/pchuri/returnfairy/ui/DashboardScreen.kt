@@ -142,7 +142,7 @@ private fun Header(snapshot: Snapshot, refreshing: Boolean, stale: Boolean) {
         Text(
             text = when {
                 refreshing -> stringResource(R.string.dashboard_refreshing)
-                stale -> stringResource(R.string.dashboard_offline, snapshot.fetchedAt.format(FETCHED_FORMAT))
+                stale -> stringResource(R.string.dashboard_stale, snapshot.fetchedAt.format(FETCHED_FORMAT))
                 else -> stringResource(R.string.dashboard_fetched_at, snapshot.fetchedAt.format(FETCHED_FORMAT))
             },
             color = colors.yellow,
@@ -200,8 +200,14 @@ private fun AccountCard(account: AccountStatus, today: LocalDate) {
         }
 
         val error = account.error
+        if (account.isStale) {
+            Text(
+                stringResource(R.string.card_stale, account.lastSuccessfulAt!!.format(FETCHED_FORMAT)),
+                color = colors.yellow, fontSize = 13.sp, modifier = Modifier.padding(top = 10.dp),
+            )
+        }
         when {
-            error != null -> Text(
+            error != null && !account.isStale -> Text(
                 stringResource(R.string.card_error, stringResource(errorText(error))),
                 color = colors.red, fontSize = 13.sp,
                 modifier = Modifier.padding(top = 10.dp).fillMaxWidth().clip(RoundedCornerShape(10.dp)).background(colors.tintRed)
@@ -214,7 +220,7 @@ private fun AccountCard(account: AccountStatus, today: LocalDate) {
             else -> BookTable(account.sortedBooks(today), today)
         }
 
-        if (error == null && account.reservations.isNotEmpty()) {
+        if ((error == null || account.isStale) && account.reservations.isNotEmpty()) {
             Text(
                 stringResource(R.string.reservations_title, account.reservations.size),
                 color = colors.sub, fontSize = 12.sp, fontWeight = FontWeight.Bold, modifier = Modifier.padding(top = 12.dp),
