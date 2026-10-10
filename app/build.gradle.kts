@@ -23,8 +23,8 @@ android {
         applicationId = "com.pchuri.returnfairy"
         minSdk = 26
         targetSdk = 35
-        versionCode = 18
-        versionName = "4.0.1"
+        versionCode = 19
+        versionName = "4.0.2"
     }
 
     signingConfigs {
