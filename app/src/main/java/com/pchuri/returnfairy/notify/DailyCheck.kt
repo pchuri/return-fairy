@@ -15,15 +15,20 @@ import androidx.work.CoroutineWorker
 import androidx.work.ExistingPeriodicWorkPolicy
 import androidx.work.WorkManager
 import androidx.work.WorkerParameters
+import androidx.work.ListenableWorker
 import com.pchuri.returnfairy.R
 import com.pchuri.returnfairy.core.SplibClient
+import com.pchuri.returnfairy.core.Snapshot
 import com.pchuri.returnfairy.data.AccountStore
+import com.pchuri.returnfairy.data.LookupSession
 import com.pchuri.returnfairy.data.SettingsStore
 import com.pchuri.returnfairy.data.SnapshotStore
 import com.pchuri.returnfairy.ui.MainActivity
 import java.time.LocalDate
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.runInterruptible
+import kotlinx.coroutines.currentCoroutineContext
+import kotlinx.coroutines.ensureActive
 
 const val CHANNEL_DUE_REMINDERS = "due_reminders"
 private const val WORK_NAME = "due_reminder_daily"
@@ -87,14 +92,9 @@ class DailyCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
         if (session.accounts.isEmpty()) return Result.success()
 
         val snapshot = SplibClient().fetchAll(session.accounts)
-        var outcome = Result.success()
-        SnapshotStore(context).mergeAndSave(snapshot, session) { _, accepted ->
-            // Only this attempt's accepted fresh accounts may cause retries or reminders.
-            val plan = planDailyCheck(accepted, LocalDate.now(), runAttemptCount)
-            if (plan.retry) outcome = Result.retry()
-            else if (!plan.digest.isEmpty) notifyDigest(context, plan.digest)
+        return commitDailyLookup(SnapshotStore(context), snapshot, session, LocalDate.now(), runAttemptCount) {
+            notifyDigest(context, it)
         }
-        return outcome
     }
 
     private fun notifyDigest(context: Context, digest: DailyDigest) {
@@ -127,4 +127,28 @@ class DailyCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             .build()
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
     }
+}
+
+/** Keep valid cache data and recheck cancellation before reminder planning and submission.
+ * Cancellation can arrive while a synchronous monitor acquisition waits after network I/O.
+ * This synchronous callback checks it once the mutation monitor has actually been acquired.
+ */
+internal suspend fun commitDailyLookup(
+    store: SnapshotStore,
+    snapshot: Snapshot,
+    session: LookupSession,
+    today: LocalDate,
+    runAttemptCount: Int,
+    onNotify: (DailyDigest) -> Unit,
+): ListenableWorker.Result {
+    val lookupContext = currentCoroutineContext()
+    var outcome = ListenableWorker.Result.success()
+    store.mergeAndSave(snapshot, session) { _, accepted ->
+        lookupContext.ensureActive()
+        // Only this attempt's accepted fresh accounts may cause retries or reminders.
+        val plan = planDailyCheck(accepted, today, runAttemptCount)
+        if (plan.retry) outcome = ListenableWorker.Result.retry()
+        else if (!plan.digest.isEmpty) onNotify(plan.digest)
+    }
+    return outcome
 }

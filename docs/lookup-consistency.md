@@ -34,7 +34,9 @@ change replaces the legacy empty revision and invalidates those entries.
 The commit callback runs under the mutation monitor and receives two snapshots: the merged display
 cache and only this lookup's newly accepted raw outcomes. Daily retry/reminder planning uses the
 latter, so rejected or cached fallback results cannot generate reminders. Notification construction
-and submission remain inside this callback, closing the check-to-notify gap. No network call or
+and submission remain inside this callback, closing the account validation-to-notify gap.
+The Worker rechecks coroutine cancellation after acquiring the monitor and before reminder planning;
+a cancelled lookup can retain valid cache data while skipping reminders and terminal reanchoring. No network call or
 suspension occurs while the monitor is held. An account edit that completes before the callback is
 rejected; if a notification call wins the monitor first, that submission precedes the edit.
 
@@ -46,7 +48,8 @@ or replacing the screen for a replacement refresh.
 
 The process shares its latest accepted cache between store instances, retaining ordering even when
 AtomicFile cannot write. Account preference saves and sequence allocation require successful
-synchronous commits. Cache writes remain best effort. If a cache write fails and the process dies,
+synchronous commits and fail fast if preferences cannot be persisted; a graceful storage-error UI
+is outside this change. Cache writes remain best effort. If a cache write fails and the process dies,
 its unsaved result cannot be recovered; only successfully persisted bytes survive restart.
 
 `LookupCommitTest` uses production preferences, AtomicFile and commit/mutation paths with synthetic
@@ -54,7 +57,11 @@ accounts and an injected test-only password codec. Its 16 tests cover deletion, 
 changes, same-ID re-registration, mixed/inverted completions, ties, transient/permanent failures,
 clock rollback, reload, legacy JSON, write failure, and actual monitor contention before a side
 effect callback. `RefreshCompletionTest` adds two tests, including a forced StateFlow CAS collision.
-No credentials, library requests, real device mutations or real notifications are used.
+The independent `DeepLookupValidationTest` additionally covers cold reload after clearing process
+memory, stale disk bytes after account changes, simultaneous completions, cancelled UI completion,
+callback failure/lock release, and the actual production Worker commit/notification-planning helper
+including cancellation while blocked on the monitor. No credentials, library requests, real device
+mutations or real notifications are used.
 
 These tests do not prove real notification delivery, the actual selected-time device run, or the
 full production WorkManager/network retry-to-terminal-to-next-day lifecycle. Existing scheduling,
