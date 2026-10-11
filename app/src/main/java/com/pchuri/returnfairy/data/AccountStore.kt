@@ -7,13 +7,14 @@ import android.util.Base64
 import org.json.JSONArray
 import org.json.JSONObject
 import java.security.KeyStore
+import java.util.UUID
 import javax.crypto.Cipher
 import javax.crypto.KeyGenerator
 import javax.crypto.SecretKey
 import javax.crypto.spec.GCMParameterSpec
 
 /** [label] is the name shown on the dashboard; blank means "use the name the library site shows". */
-data class Account(val userId: String, val password: String, val label: String = "") {
+data class Account(val userId: String, val password: String, val label: String = "", val revision: String = "") {
     override fun toString(): String = "Account(userId=$userId, label=$label)"
 }
 
@@ -21,7 +22,11 @@ data class Account(val userId: String, val password: String, val label: String =
  * Stores library accounts in SharedPreferences with passwords encrypted
  * by an AES-GCM key held in the Android Keystore (never leaves the device).
  */
-class AccountStore(context: Context) {
+class AccountStore internal constructor(
+    private val context: Context,
+    private val encodePassword: ((String) -> String)? = null,
+    private val decodePassword: ((String) -> String?)? = null,
+) {
 
     private val prefs = context.getSharedPreferences("returnfairy_accounts", Context.MODE_PRIVATE)
 
@@ -61,32 +66,48 @@ class AccountStore(context: Context) {
         null
     }
 
-    fun load(): List<Account> {
+    fun load(): List<Account> = synchronized(LookupCoordination.lock) {
         val raw = prefs.getString(KEY_ACCOUNTS, null) ?: return emptyList()
-        return try {
+        try {
             val array = JSONArray(raw)
             (0 until array.length()).mapNotNull { i ->
                 val obj = array.getJSONObject(i)
                 val userId = obj.optString("userId").takeIf { it.isNotBlank() } ?: return@mapNotNull null
-                val password = decrypt(obj.optString("encryptedPassword")) ?: return@mapNotNull null
-                Account(userId, password, obj.optString("label"))
+                val password = (decodePassword ?: ::decrypt)(obj.optString("encryptedPassword")) ?: return@mapNotNull null
+                Account(userId, password, obj.optString("label"), obj.optString("revision"))
             }
         } catch (e: Exception) {
             emptyList()
         }
     }
 
-    fun save(accounts: List<Account>) {
-        val array = JSONArray()
-        accounts.distinctBy { it.userId }.forEach { account ->
-            array.put(
-                JSONObject()
-                    .put("userId", account.userId)
-                    .put("encryptedPassword", encrypt(account.password))
-                    .put("label", account.label)
-            )
+    /** New/changed accounts get a new incarnation, even when removed then re-added unchanged. */
+    fun save(accounts: List<Account>): List<Account> = synchronized(LookupCoordination.lock) {
+        val previous = load().associateBy { it.userId }
+        val revised = accounts.distinctBy { it.userId }.map { account ->
+            val old = previous[account.userId]
+            val revision = if (old != null && old.password == account.password && old.label == account.label)
+                old.revision else UUID.randomUUID().toString()
+            account.copy(revision = revision)
         }
-        prefs.edit().putString(KEY_ACCOUNTS, array.toString()).apply()
+        val array = JSONArray()
+        revised.forEach { account ->
+            array.put(JSONObject()
+                .put("userId", account.userId)
+                .put("encryptedPassword", (encodePassword ?: ::encrypt)(account.password))
+                .put("label", account.label)
+                .put("revision", account.revision))
+        }
+        check(prefs.edit().putString(KEY_ACCOUNTS, array.toString()).commit()) { "Could not save accounts" }
+        // Use the same lock as commits; invalidate changed accounts as well as deleted accounts.
+        SnapshotStore(context).retainAccounts(revised)
+        revised
+    }
+
+    fun beginLookup(): LookupSession = synchronized(LookupCoordination.lock) {
+        val sequence = Math.addExact(prefs.getLong("lookupSequence", 0), 1)
+        check(prefs.edit().putLong("lookupSequence", sequence).commit()) { "Could not order lookup" }
+        LookupSession(load(), sequence)
     }
 
     companion object {

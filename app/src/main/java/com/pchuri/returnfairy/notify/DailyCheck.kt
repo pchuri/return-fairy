@@ -83,22 +83,24 @@ class DailyCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
 
     private suspend fun checkAndNotify(): Result {
         val context = applicationContext
-        val accounts = AccountStore(context).load()
-        if (accounts.isEmpty()) return Result.success()
+        val session = AccountStore(context).beginLookup()
+        if (session.accounts.isEmpty()) return Result.success()
 
-        val snapshot = SplibClient().fetchAll(accounts)
-        SnapshotStore(context).mergeAndSave(snapshot)
+        val snapshot = SplibClient().fetchAll(session.accounts)
+        var outcome = Result.success()
+        SnapshotStore(context).mergeAndSave(snapshot, session) { _, accepted ->
+            // Only this attempt's accepted fresh accounts may cause retries or reminders.
+            val plan = planDailyCheck(accepted, LocalDate.now(), runAttemptCount)
+            if (plan.retry) outcome = Result.retry()
+            else if (!plan.digest.isEmpty) notifyDigest(context, plan.digest)
+        }
+        return outcome
+    }
 
-        // Retried attempts never notify. Once recovered or exhausted, notify only fresh accounts.
-        val plan = planDailyCheck(snapshot, LocalDate.now(), runAttemptCount)
-        if (plan.retry) return Result.retry()
-        val digest = plan.digest
-        if (digest.isEmpty) return Result.success()
+    private fun notifyDigest(context: Context, digest: DailyDigest) {
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU &&
             context.checkSelfPermission(Manifest.permission.POST_NOTIFICATIONS) != PackageManager.PERMISSION_GRANTED
-        ) {
-            return Result.success()
-        }
+        ) return
 
         val title = when {
             digest.overdue.isNotEmpty() -> context.getString(R.string.notif_title_overdue, digest.overdue.size)
@@ -124,6 +126,5 @@ class DailyCheckWorker(context: Context, params: WorkerParameters) : CoroutineWo
             .setAutoCancel(true)
             .build()
         NotificationManagerCompat.from(context).notify(NOTIFICATION_ID, notification)
-        return Result.success()
     }
 }
