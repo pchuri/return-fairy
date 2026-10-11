@@ -18,6 +18,7 @@ import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.job
 import kotlinx.coroutines.withContext
 import okhttp3.OkHttpClient
 
@@ -26,6 +27,7 @@ data class DashboardUiState(
     val snapshot: Snapshot? = null,
     val refreshing: Boolean = false,
     val hasAccounts: Boolean = false,
+    internal val refreshSequence: Long = 0,
 ) {
     /** At least one account is showing a retained result after a connection failure. */
     val stale: Boolean get() = snapshot?.hasStaleResults == true
@@ -77,25 +79,29 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
      * A pull while a lookup runs is ignored; an account change ([restart]) replaces it.
      */
     fun refresh(restart: Boolean = false) {
-        val accounts = _settingsState.value.accounts
-        if (accounts.isEmpty()) {
+        val session = accountStore.beginLookup()
+        if (session.accounts.isEmpty()) {
             refreshJob?.cancel()
-            _dashboard.value = DashboardUiState(snapshot = null, hasAccounts = false)
+            _dashboard.value = DashboardUiState(snapshot = null, hasAccounts = false, refreshSequence = session.sequence)
             return
         }
         if (refreshJob?.isActive == true) {
             if (!restart) return
             refreshJob?.cancel()
         }
-        _dashboard.update { it.copy(refreshing = true, hasAccounts = true) }
+        _dashboard.update { it.copy(refreshing = true, hasAccounts = true, refreshSequence = session.sequence) }
         refreshJob = viewModelScope.launch {
-            val fresh = client.fetchAll(accounts)
+            val lookupJob = coroutineContext.job
+            val fresh = client.fetchAll(session.accounts)
             // Merge per account, including partial failures. The store reads the latest worker
             // result while holding the write lock; memory is a fallback if saving previously failed.
-            val shown = withContext(Dispatchers.IO) {
-                snapshots.mergeAndSave(fresh, _dashboard.value.snapshot)
+            withContext(Dispatchers.IO) {
+                snapshots.mergeAndSave(fresh, session, _dashboard.value.snapshot) { shown, _ ->
+                    // A cancelled IO block may still finish its synchronous cache commit.
+                    // Let it preserve unchanged accounts without ending the replacement's spinner.
+                    _dashboard.completeLookup(session.sequence, shown) { lookupJob.isActive }
+                }
             }
-            _dashboard.update { it.copy(snapshot = shown, refreshing = false) }
         }
     }
 
@@ -111,9 +117,9 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     private fun saveAccounts(accounts: List<Account>) {
-        accountStore.save(accounts)
-        _settingsState.update { it.copy(accounts = accounts) }
-        if (accounts.isEmpty()) snapshots.clear()
+        val saved = accountStore.save(accounts)
+        _settingsState.update { it.copy(accounts = saved) }
+        _dashboard.update { it.copy(snapshot = snapshots.load(), hasAccounts = saved.isNotEmpty()) }
         refresh(restart = true)
     }
 
@@ -167,3 +173,12 @@ class AppViewModel(application: Application) : AndroidViewModel(application) {
 private fun appVersion(context: Application): String =
     runCatching { context.packageManager.getPackageInfo(context.packageName, 0).versionName }
         .getOrNull().orEmpty()
+
+/** Sequence and result live in the same StateFlow value, so a CAS retry observes replacements. */
+internal fun MutableStateFlow<DashboardUiState>.completeLookup(
+    sequence: Long, shown: Snapshot, isActive: () -> Boolean,
+) = update { state ->
+    if (state.refreshSequence == sequence && isActive())
+        state.copy(snapshot = shown.takeIf { it.accounts.isNotEmpty() }, refreshing = false)
+    else state
+}

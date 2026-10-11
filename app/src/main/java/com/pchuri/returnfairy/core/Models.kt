@@ -67,6 +67,9 @@ data class AccountStatus(
     val userId: String = "",
     /** Time these books/reservations were last fetched successfully, retained across outages. */
     val lastSuccessfulAt: LocalDateTime? = null,
+    /** Cache provenance, contains no password. Empty/zero identifies a pre-revision cache. */
+    val accountRevision: String = "",
+    val requestSequence: Long = 0,
 ) {
     val interlibraryCount: Int get() = books.count { it.isInterlibrary }
     val isConnectionFailure: Boolean get() = error == SplibErrorKind.NETWORK || error == SplibErrorKind.TIMEOUT
