@@ -177,12 +177,145 @@ class LookupCommitTest {
     }
 
     @Test fun clockRollbackCannotMoveSuccessfulDataBackwards() {
+        // Sequence, not wall clock, orders attempts: a newer lookup whose clock reads earlier is
+        // still the newest data and must be accepted with its own (earlier) time.
         val first = accounts.beginLookup()
         store.mergeAndSave(fresh(first), first)
         val second = accounts.beginLookup()
-        store.mergeAndSave(fresh(second, at.minusMinutes(1), "backwards"), second)
-        assertEquals(at, persisted().accounts.first().lastSuccessfulAt)
-        assertEquals("due", persisted().accounts.first().books.single().title)
+        val earlier = at.minusMinutes(1)
+        var acceptedIds = emptyList<String>()
+        val shown = store.mergeAndSave(fresh(second, earlier, "backwards"), second) { _, accepted ->
+            acceptedIds = accepted.accounts.map { it.userId }
+        }
+        assertEquals(listOf(a.userId, b.userId), acceptedIds)
+        assertEquals(earlier, shown.fetchedAt)
+        assertEquals(earlier, persisted().fetchedAt)
+        persisted().accounts.forEach {
+            assertEquals("backwards", it.books.single().title)
+            assertEquals(earlier, it.lastSuccessfulAt)
+            assertEquals(second.sequence, it.requestSequence)
+        }
+        // The previous lookup cannot come back afterwards, even with a later clock.
+        store.mergeAndSave(fresh(first, at.plusHours(1), "obsolete"), first) { _, accepted ->
+            assertTrue(accepted.accounts.isEmpty())
+        }
+        assertEquals(earlier, persisted().fetchedAt)
+        assertEquals("backwards", persisted().accounts.first().books.single().title)
+    }
+
+    @Test fun olderSequenceWithFutureClockIsRejected() {
+        val old = accounts.beginLookup()
+        val next = accounts.beginLookup()
+        store.mergeAndSave(fresh(next, at, "new"), next)
+        val shown = store.mergeAndSave(fresh(old, at.plusHours(5), "future"), old) { _, accepted ->
+            assertTrue(accepted.accounts.isEmpty())
+        }
+        assertEquals(at, shown.fetchedAt)
+        assertEquals(at, persisted().fetchedAt)
+        persisted().accounts.forEach {
+            assertEquals("new", it.books.single().title)
+            assertEquals(at, it.lastSuccessfulAt)
+            assertEquals(next.sequence, it.requestSequence)
+        }
+    }
+
+    @Test fun unacceptedOrEmptyResultNeitherAdvancesNorRewindsShownTime() {
+        val first = accounts.beginLookup()
+        store.mergeAndSave(fresh(first), first)
+        // Duplicate commit of the accepted attempt with an earlier and a later clock.
+        store.mergeAndSave(fresh(first, at.minusHours(1), "dup-earlier"), first)
+        assertEquals(at, persisted().fetchedAt)
+        store.mergeAndSave(fresh(first, at.plusHours(1), "dup-later"), first)
+        assertEquals(at, persisted().fetchedAt)
+        // A newer attempt that produced no account results accepts nothing.
+        val empty = accounts.beginLookup()
+        val shown = store.mergeAndSave(Snapshot(at.minusHours(2), emptyList()), empty) { _, accepted ->
+            assertTrue(accepted.accounts.isEmpty())
+        }
+        assertEquals(at, shown.fetchedAt)
+        val emptyLater = accounts.beginLookup()
+        store.mergeAndSave(Snapshot(at.plusHours(2), emptyList()), emptyLater)
+        assertEquals(at, persisted().fetchedAt)
+        persisted().accounts.forEach {
+            assertEquals("due", it.books.single().title)
+            assertEquals(at, it.lastSuccessfulAt)
+            assertEquals(first.sequence, it.requestSequence)
+        }
+    }
+
+    @Test fun olderAttemptAcceptedForOneAccountKeepsNewestShownTime() {
+        val first = accounts.beginLookup()
+        val second = accounts.beginLookup()
+        store.mergeAndSave(fresh(second, at.minusMinutes(5), "new").let {
+            it.copy(accounts = it.accounts.filter { result -> result.userId == a.userId })
+        }, second)
+        store.mergeAndSave(fresh(first, at, "old"), first) { _, accepted ->
+            assertEquals(listOf(b.userId), accepted.accounts.map { it.userId })
+        }
+        // The newest accepted attempt (second) still owns the shown time.
+        assertEquals(at.minusMinutes(5), persisted().fetchedAt)
+        assertEquals(listOf("new", "old"), persisted().accounts.map { it.books.single().title })
+    }
+
+    @Test fun futureClockTimestampDoesNotStickAfterClockCorrection() {
+        val wrong = at.plusDays(1)
+        val first = accounts.beginLookup()
+        store.mergeAndSave(fresh(first, wrong, "future"), first)
+        assertEquals(wrong, persisted().fetchedAt)
+        val corrected = accounts.beginLookup()
+        val shown = store.mergeAndSave(fresh(corrected, at.plusMinutes(1), "corrected"), corrected)
+        assertEquals(at.plusMinutes(1), shown.fetchedAt)
+        assertEquals(at.plusMinutes(1), persisted().fetchedAt)
+        persisted().accounts.forEach {
+            assertEquals("corrected", it.books.single().title)
+            assertEquals(at.plusMinutes(1), it.lastSuccessfulAt)
+        }
+    }
+
+    @Test fun newerFailuresWithEarlierClockKeepFallbackSemantics() {
+        val wrong = at.plusDays(1)
+        val first = accounts.beginLookup()
+        store.mergeAndSave(fresh(first, wrong), first)
+        val transient = accounts.beginLookup()
+        store.mergeAndSave(fresh(transient, at, error = SplibErrorKind.TIMEOUT), transient) { _, accepted ->
+            assertEquals(2, accepted.accounts.size)
+        }
+        assertEquals(at, persisted().fetchedAt)
+        persisted().accounts.forEach {
+            assertTrue(it.isStale)
+            assertEquals("due", it.books.single().title)
+            assertEquals(wrong, it.lastSuccessfulAt) // the real last success is retained, not invented
+            assertEquals(transient.sequence, it.requestSequence)
+        }
+        val permanent = accounts.beginLookup()
+        store.mergeAndSave(fresh(permanent, at.minusMinutes(1), error = SplibErrorKind.LOGIN_FAILED), permanent)
+        assertEquals(at.minusMinutes(1), persisted().fetchedAt)
+        persisted().accounts.forEach {
+            assertEquals(SplibErrorKind.LOGIN_FAILED, it.error)
+            assertTrue(it.books.isEmpty())
+            assertNull(it.lastSuccessfulAt)
+        }
+    }
+
+    @Test fun timeZoneChangeIsOrderedBySequenceAcrossStoreInstances() {
+        val seoul = java.time.ZoneId.of("Asia/Seoul")
+        val losAngeles = java.time.ZoneId.of("America/Los_Angeles")
+        val stale = accounts.beginLookup() // started before the trip, completes last
+        val beforeTrip = accounts.beginLookup()
+        store.mergeAndSave(fresh(beforeTrip, at, "seoul"), beforeTrip)
+        // One real hour later, but the local wall clock now reads many hours earlier.
+        val afterTrip = LocalDateTime.ofInstant(at.atZone(seoul).toInstant().plusSeconds(3600), losAngeles)
+        assertTrue(afterTrip.isBefore(at))
+        accounts = AccountStore(context, { it }, { it })
+        val next = accounts.beginLookup()
+        SnapshotStore(context, accounts::load).mergeAndSave(fresh(next, afterTrip, "los-angeles"), next)
+        assertEquals(afterTrip, persisted().fetchedAt)
+        assertEquals(listOf("los-angeles", "los-angeles"), persisted().accounts.map { it.books.single().title })
+        SnapshotStore(context, accounts::load).mergeAndSave(fresh(stale, at.plusHours(1), "late"), stale) { _, accepted ->
+            assertTrue(accepted.accounts.isEmpty())
+        }
+        assertEquals(afterTrip, persisted().fetchedAt)
+        assertEquals(listOf("los-angeles", "los-angeles"), persisted().accounts.map { it.books.single().title })
     }
 
     @Test fun sequenceAndRevisionsSurviveNewStoreInstancesAndNoopEdits() {

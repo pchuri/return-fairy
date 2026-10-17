@@ -54,9 +54,13 @@ class SnapshotStore internal constructor(
     }
 
     /** Session is mandatory: callers cannot bypass account-revision validation.
-     * Attempt sequence is authoritative for all outcomes, ties keep the first accepted result.
-     * A success also cannot move the last-success clock backwards. New transient failures retain
-     * successful data; new permanent failures clear it. Older outcomes never replace newer ones.
+     * Attempt sequence (persisted and monotonic, see [AccountStore.beginLookup]) is authoritative
+     * for all outcomes, ties keep the first accepted result. Wall-clock time is NOT an ordering
+     * signal: a newer attempt is accepted even if the device clock or time zone moved earlier,
+     * and an older attempt is rejected even if its clock reads later. New transient failures
+     * retain successful data; new permanent failures clear it. Older outcomes never replace newer
+     * ones. The shown snapshot time is the newest accepted attempt's time; a result that is not
+     * the newest accepted attempt leaves the previously shown time unchanged.
      * [onAccepted] runs under the mutation lock, closing the validation-to-display/notify gap.
      */
     fun mergeAndSave(
@@ -75,13 +79,13 @@ class SnapshotStore internal constructor(
         val latest = candidates.groupBy { it.userId }.mapValues { (_, values) ->
             values.maxWith(compareBy<AccountStatus> { it.requestSequence }.thenBy { it.lastSuccessfulAt })
         }.toMutableMap()
+        // Newest attempt already shown for any current account, before this merge.
+        val newestShownSequence = current.keys.mapNotNull { latest[it]?.requestSequence }.maxOrNull() ?: 0L
         val accepted = fresh.accounts.distinctBy { it.userId }.mapNotNull { result ->
             val account = current[result.userId] ?: return@mapNotNull null
             if (captured[result.userId]?.revision != account.revision) return@mapNotNull null
             val previous = latest[result.userId]
-            if (previous != null && (session.sequence <= previous.requestSequence ||
-                (result.error == null && previous.lastSuccessfulAt?.isAfter(fresh.fetchedAt) == true)))
-                return@mapNotNull null
+            if (previous != null && session.sequence <= previous.requestSequence) return@mapNotNull null
             val incoming = result.copy(accountRevision = account.revision, requestSequence = session.sequence)
             val merged = Snapshot(fresh.fetchedAt, listOf(incoming)).withCachedFallback(
                 previous?.let { Snapshot(fresh.fetchedAt, listOf(it)) },
@@ -89,10 +93,12 @@ class SnapshotStore internal constructor(
             latest[result.userId] = merged
             incoming
         }
-        val shown = Snapshot(
-            maxOf(fresh.fetchedAt, disk?.fetchedAt ?: fresh.fetchedAt),
-            current.keys.mapNotNull { latest[it] },
-        )
+        // Sequence decides which attempt time is shown, never wall-clock comparison: the fresh time
+        // is used only when this attempt is now the newest accepted one (even if the clock moved
+        // earlier); an older or entirely rejected result keeps the previously shown time.
+        val shownAt = if (accepted.isNotEmpty() && session.sequence > newestShownSequence) fresh.fetchedAt
+            else (disk ?: inMemory)?.fetchedAt ?: fresh.fetchedAt
+        val shown = Snapshot(shownAt, current.keys.mapNotNull { latest[it] })
         if (current.isEmpty()) clear() else save(shown)
         onAccepted(shown, Snapshot(fresh.fetchedAt, accepted))
         shown
